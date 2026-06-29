@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Desk — AI Study Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --chalk-bg: #1f2c28;
+    --chalk-bg-soft: #25352f;
+    --paper: #f7f3e8;
+    --paper-line: #e3dcc8;
+    --ink: #ece8dc;
+    --ink-dim: #a9b3ab;
+    --amber: #e3a53d;
+    --amber-soft: #f0c97a;
+    --sage: #7fa873;
+    --brick: #c1604a;
+    --rule: rgba(236,232,220,0.14);
+    --radius: 10px;
+    --display: 'Fraunces', serif;
+    --body: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, rgba(255,255,255,0.03), transparent 60%),
+      var(--chalk-bg);
+    color:var(--ink);
+    font-family:var(--body);
+    line-height:1.5;
+    min-height:100vh;
+  }
+  a{color:var(--amber-soft);}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px;}
+
+  /* ---- Header ---- */
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px;border-bottom:1px solid var(--rule);padding-bottom:20px;}
+  .brand h1{font-family:var(--display);font-weight:600;font-size:2.1rem;margin:0 0 4px;letter-spacing:0.2px;}
+  .brand h1 .dot{color:var(--amber);}
+  .brand p{margin:0;color:var(--ink-dim);font-size:0.95rem;}
+  .settings-toggle{
+    background:transparent;border:1px solid var(--rule);color:var(--ink-dim);
+    padding:8px 14px;border-radius:999px;font-family:var(--mono);font-size:0.78rem;
+    cursor:pointer;letter-spacing:0.03em;transition:all .15s ease;
+  }
+  .settings-toggle:hover{border-color:var(--amber);color:var(--amber-soft);}
+
+  /* ---- Settings panel ---- */
+  .settings{
+    background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:var(--radius);
+    padding:18px 20px;margin-bottom:24px;display:none;
+  }
+  .settings.open{display:block;}
+  .settings h3{margin:0 0 12px;font-family:var(--display);font-size:1.05rem;font-weight:600;color:var(--amber-soft);}
+  .field-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+  .field{flex:1;min-width:220px;}
+  .field label{display:block;font-size:0.78rem;color:var(--ink-dim);margin-bottom:5px;font-family:var(--mono);}
+  .field input[type=text], .field input[type=password]{
+    width:100%;background:rgba(0,0,0,0.18);border:1px solid var(--rule);color:var(--ink);
+    padding:9px 11px;border-radius:7px;font-family:var(--mono);font-size:0.88rem;
+  }
+  .field input:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .checkrow{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--ink-dim);margin-top:6px;}
+  .settings .hint{font-size:0.78rem;color:var(--ink-dim);margin-top:8px;line-height:1.5;}
+
+  /* ---- Materials panel ---- */
+  .materials{background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:var(--radius);padding:20px;margin-bottom:26px;}
+  .materials h2{margin:0 0 4px;font-family:var(--display);font-size:1.2rem;font-weight:600;}
+  .materials .sub{color:var(--ink-dim);font-size:0.85rem;margin:0 0 14px;}
+  textarea#materialText{
+    width:100%;min-height:110px;resize:vertical;background:rgba(0,0,0,0.18);
+    border:1px solid var(--rule);color:var(--ink);border-radius:7px;padding:12px;
+    font-family:var(--body);font-size:0.92rem;
+  }
+  textarea#materialText:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .dropzone{
+    margin-top:12px;border:1.5px dashed var(--rule);border-radius:7px;padding:16px;
+    text-align:center;color:var(--ink-dim);font-size:0.85rem;cursor:pointer;transition:border-color .15s;
+  }
+  .dropzone.drag{border-color:var(--amber);color:var(--amber-soft);}
+  .dropzone input{display:none;}
+  .source-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .source-list li{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:rgba(0,0,0,0.16);border:1px solid var(--rule);border-radius:6px;
+    padding:7px 10px;font-size:0.83rem;
+  }
+  .source-list li span.name{font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .source-list li button{background:none;border:none;color:var(--brick);cursor:pointer;font-size:0.95rem;line-height:1;}
+  .mat-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:0.78rem;color:var(--ink-dim);font-family:var(--mono);}
+  .mat-footer button{background:transparent;border:1px solid var(--rule);color:var(--ink-dim);padding:5px 11px;border-radius:999px;cursor:pointer;font-family:var(--mono);font-size:0.75rem;}
+  .mat-footer button:hover{border-color:var(--brick);color:var(--brick);}
+
+  /* ---- Tabs ---- */
+  .tabnav{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:22px;}
+  .tabnav button{
+    background:none;border:none;color:var(--ink-dim);font-family:var(--display);font-size:1.02rem;font-weight:600;
+    padding:10px 16px 12px;cursor:pointer;position:relative;
+  }
+  .tabnav button .num{font-family:var(--mono);font-size:0.7rem;color:var(--ink-dim);margin-right:6px;}
+  .tabnav button.active{color:var(--amber-soft);}
+  .tabnav button.active::after{
+    content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;
+    background:var(--amber);border-radius:3px 3px 0 0;
+  }
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+  .panel-head h2{margin:0;font-family:var(--display);font-size:1.3rem;}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .controls select{
+    background:rgba(0,0,0,0.18);border:1px solid var(--rule);color:var(--ink);
+    padding:7px 9px;border-radius:7px;font-family:var(--mono);font-size:0.8rem;
+  }
+  .btn{
+    background:var(--amber);color:#21180a;border:none;padding:10px 18px;border-radius:999px;
+    font-weight:600;font-size:0.88rem;cursor:pointer;font-family:var(--body);
+    transition:transform .1s ease, box-shadow .15s ease;
+  }
+  .btn:hover{box-shadow:0 0 0 3px rgba(227,165,61,0.25);}
+  .btn:active{transform:scale(0.97);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;box-shadow:none;}
+  .btn.ghost{background:transparent;border:1px solid var(--rule);color:var(--ink-dim);}
+  .btn.ghost:hover{border-color:var(--amber);color:var(--amber-soft);}
+  .btn.small{padding:7px 13px;font-size:0.8rem;}
+
+  .empty{color:var(--ink-dim);font-size:0.9rem;padding:30px 10px;text-align:center;border:1px dashed var(--rule);border-radius:var(--radius);}
+  .error{background:rgba(193,96,74,0.15);border:1px solid var(--brick);color:#f3cfc4;padding:10px 14px;border-radius:7px;font-size:0.85rem;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.25);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:7px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-row{color:var(--ink-dim);font-size:0.88rem;padding:14px 0;}
+
+  /* ---- Notes ---- */
+  .notes-body{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:26px 28px;font-size:0.96rem;}
+  .notes-body h1,.notes-body h2,.notes-body h3{font-family:var(--display);color:#1f2c28;}
+  .notes-body h1{font-size:1.4rem;border-bottom:2px solid var(--amber);padding-bottom:6px;}
+  .notes-body h2{font-size:1.18rem;margin-top:22px;}
+  .notes-body h3{font-size:1.02rem;}
+  .notes-body ul{padding-left:22px;}
+  .notes-body code{background:#e8e1cc;padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:0.85em;}
+  .notes-body strong{color:#5b3e12;}
+
+  /* ---- Flashcards ---- */
+  .deck-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;}
+  .progress-bar{width:100%;max-width:480px;height:5px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;}
+  .progress-bar .fill{height:100%;background:var(--amber);transition:width .2s ease;}
+  .card-stage{width:100%;max-width:480px;height:280px;perspective:1400px;}
+  .card-inner{
+    position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;cursor:pointer;
+  }
+  .card-inner.flipped{transform:rotateY(180deg);}
+  .card-face{
+    position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;
+    display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;
+    background:var(--paper);color:#2a2620;
+    box-shadow:0 10px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.05) inset;
+    font-family:var(--display);font-size:1.18rem;line-height:1.45;
+  }
+  .card-face::before{
+    content:"";position:absolute;top:14px;left:14px;width:34px;height:10px;
+    background:rgba(227,165,61,0.55);transform:rotate(-3deg);border-radius:2px;
+  }
+  .card-face.back{transform:rotateY(180deg);background:#fffaf0;}
+  .card-face .tag{position:absolute;top:14px;right:16px;font-family:var(--mono);font-size:0.68rem;color:#9c8c63;letter-spacing:0.06em;}
+  .deck-controls{display:flex;align-items:center;gap:14px;}
+  .deck-controls .count{font-family:var(--mono);color:var(--ink-dim);font-size:0.85rem;min-width:64px;text-align:center;}
+  .icon-btn{
+    background:rgba(255,255,255,0.06);border:1px solid var(--rule);color:var(--ink);
+    width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;
+  }
+  .icon-btn:hover{border-color:var(--amber);}
+  .rate-row{display:flex;gap:10px;}
+  .rate-row button{font-family:var(--body);font-size:0.82rem;padding:7px 14px;border-radius:999px;border:1px solid var(--rule);background:transparent;cursor:pointer;}
+  .rate-row .got{color:var(--sage);}
+  .rate-row .got:hover{border-color:var(--sage);}
+  .rate-row .again{color:var(--amber-soft);}
+  .rate-row .again:hover{border-color:var(--amber);}
+  .deck-stats{font-family:var(--mono);font-size:0.78rem;color:var(--ink-dim);}
+
+  /* ---- Quiz ---- */
+  .quiz-q{background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
+  .quiz-q .qtitle{font-weight:600;margin-bottom:12px;font-size:0.97rem;}
+  .quiz-q .qnum{font-family:var(--mono);color:var(--amber-soft);margin-right:8px;}
+  .opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;margin-bottom:6px;border:1px solid transparent;cursor:pointer;font-size:0.9rem;}
+  .opt:hover{background:rgba(255,255,255,0.04);}
+  .opt input{accent-color:var(--amber);}
+  .opt.correct{border-color:var(--sage);background:rgba(127,168,115,0.12);}
+  .opt.incorrect{border-color:var(--brick);background:rgba(193,96,74,0.12);}
+  .qexplain{margin-top:10px;font-size:0.84rem;color:var(--ink-dim);border-top:1px dashed var(--rule);padding-top:8px;display:none;}
+  .qexplain.show{display:block;}
+  .score-banner{
+    background:var(--chalk-bg-soft);border:1px solid var(--amber);border-radius:10px;
+    padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+  .score-banner .big{font-family:var(--display);font-size:1.6rem;color:var(--amber-soft);}
+
+  /* ---- Explain ---- */
+  .explain-input{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .explain-input input[type=text]{
+    flex:1;min-width:220px;background:rgba(0,0,0,0.18);border:1px solid var(--rule);color:var(--ink);
+    padding:11px 14px;border-radius:999px;font-size:0.92rem;
+  }
+  .explain-input input:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .explain-history{display:flex;flex-direction:column;gap:16px;}
+  .explain-card{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:22px 24px;}
+  .explain-card h3{margin:0 0 10px;font-family:var(--display);color:#1f2c28;font-size:1.1rem;}
+  .explain-card .body h1,.explain-card .body h2,.explain-card .body h3{font-family:var(--display);color:#1f2c28;}
+  .explain-card code{background:#e8e1cc;padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:0.85em;}
+
+  footer.foot{margin-top:50px;text-align:center;color:var(--ink-dim);font-size:0.78rem;font-family:var(--mono);}
+
+  /* ---- Games: shared ---- */
+  .game-subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+  .game-subnav button{
+    background:var(--chalk-bg-soft);border:1px solid var(--rule);color:var(--ink-dim);
+    padding:8px 14px;border-radius:999px;font-family:var(--body);font-weight:600;font-size:0.85rem;cursor:pointer;
+  }
+  .game-subnav button.active{border-color:var(--amber);color:var(--amber-soft);background:rgba(227,165,61,0.1);}
+  .game-panel{display:none;}
+  .game-panel.active{display:block;}
+
+  .arcade-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:22px;}
+  .stat-card{background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:var(--radius);padding:14px 16px;text-align:center;}
+  .stat-card .val{font-family:var(--display);font-size:1.5rem;color:var(--amber-soft);}
+  .stat-card .lbl{font-family:var(--mono);font-size:0.7rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+  .xp-bar-wrap{background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:var(--radius);padding:16px 18px;margin-bottom:22px;}
+  .xp-bar-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.78rem;color:var(--ink-dim);margin-bottom:8px;}
+  .xp-bar-top strong{color:var(--amber-soft);font-family:var(--display);font-size:1rem;}
+  .xp-bar{height:9px;border-radius:6px;background:rgba(255,255,255,0.08);overflow:hidden;}
+  .xp-bar .fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-soft));transition:width .3s ease;}
+
+  .badge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:24px;}
+  .badge{
+    border:1px solid var(--rule);border-radius:var(--radius);padding:12px 14px;
+    display:flex;align-items:center;gap:10px;background:var(--chalk-bg-soft);opacity:0.4;
+  }
+  .badge.unlocked{opacity:1;border-color:var(--amber);background:rgba(227,165,61,0.08);}
+  .badge .emoji{font-size:1.6rem;}
+  .badge .name{font-size:0.82rem;font-weight:600;}
+  .badge .desc{font-size:0.7rem;color:var(--ink-dim);}
+
+  .arcade-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+  .arcade-card{
+    background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:var(--radius);
+    padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;
+  }
+  .arcade-card:hover{border-color:var(--amber);transform:translateY(-2px);}
+  .arcade-card .icon{font-size:1.8rem;margin-bottom:8px;}
+  .arcade-card h3{margin:0 0 4px;font-family:var(--display);font-size:1.08rem;}
+  .arcade-card p{margin:0;color:var(--ink-dim);font-size:0.82rem;}
+
+  /* ---- Typing game ---- */
+  .typing-setup{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+  .typing-stage{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:30px 26px;text-align:center;}
+  .typing-word{font-family:var(--display);font-size:2.1rem;font-weight:600;margin-bottom:18px;letter-spacing:0.02em;min-height:2.6rem;}
+  .typing-word .typed{color:var(--sage);}
+  .typing-word .typed.wrong{color:var(--brick);}
+  .typing-input{
+    width:100%;max-width:420px;margin:0 auto;display:block;padding:11px 16px;border-radius:999px;
+    border:2px solid #d8cfae;font-family:var(--mono);font-size:1rem;text-align:center;background:#fffaf0;
+  }
+  .typing-input:focus{outline:none;border-color:var(--amber);}
+  .typing-hud{display:flex;justify-content:center;gap:26px;margin-top:18px;font-family:var(--mono);font-size:0.85rem;color:#5b3e12;}
+  .typing-hud .n{font-family:var(--display);font-size:1.3rem;display:block;color:#1f2c28;}
+  .typing-result{text-align:center;padding:10px 0;}
+  .typing-result .big{font-family:var(--display);font-size:2.4rem;color:var(--amber-soft);}
+
+  /* ---- Emoji guesser ---- */
+  .emoji-setup{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+  .emoji-stage{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:40px 26px;text-align:center;}
+  .emoji-display{font-size:3.4rem;margin-bottom:22px;letter-spacing:0.1em;}
+  .emoji-diff{display:inline-block;font-family:var(--mono);font-size:0.72rem;padding:3px 10px;border-radius:999px;margin-bottom:14px;letter-spacing:0.04em;text-transform:uppercase;}
+  .emoji-diff.easy{background:rgba(127,168,115,0.18);color:#3c6b32;}
+  .emoji-diff.medium{background:rgba(227,165,61,0.22);color:#7a5512;}
+  .emoji-diff.hard{background:rgba(193,96,74,0.18);color:#8a3a28;}
+  .emoji-input{width:100%;max-width:380px;margin:0 auto;display:block;padding:11px 16px;border-radius:999px;border:2px solid #d8cfae;font-size:1rem;text-align:center;background:#fffaf0;}
+  .emoji-input:focus{outline:none;border-color:var(--amber);}
+  .emoji-reveal{margin-top:16px;font-family:var(--display);font-size:1.2rem;}
+  .emoji-reveal.correct{color:var(--sage);}
+  .emoji-reveal.incorrect{color:var(--brick);}
+  .emoji-score-row{display:flex;justify-content:center;gap:22px;margin-top:18px;font-family:var(--mono);font-size:0.85rem;color:#5b3e12;}
+
+  /* ---- Connect 4 ---- */
+  .c4-setup{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+  .c4-question{
+    background:var(--chalk-bg-soft);border:1px solid var(--amber);border-radius:var(--radius);
+    padding:16px 20px;margin-bottom:16px;
+  }
+  .c4-question .qtitle{font-weight:600;margin-bottom:10px;}
+  .c4-board{
+    display:inline-grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#16201c;
+    padding:10px;border-radius:12px;margin:0 auto;
+  }
+  .c4-cell{
+    width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,0.05);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .c4-cell.p1{background:var(--amber);box-shadow:inset 0 0 0 2px rgba(0,0,0,0.25);}
+  .c4-cell.p2{background:var(--brick);box-shadow:inset 0 0 0 2px rgba(0,0,0,0.25);}
+  .c4-board-wrap{text-align:center;}
+  .c4-status{text-align:center;font-family:var(--mono);font-size:0.88rem;color:var(--ink-dim);margin-top:14px;}
+  .c4-status strong{color:var(--amber-soft);}
+
+  /* ---- Motion: panel + entrance animations ---- */
+  @keyframes fadeSlideIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes popIn{ 0%{opacity:0; transform:scale(.6);} 60%{opacity:1; transform:scale(1.08);} 100%{transform:scale(1);} }
+  @keyframes badgePop{ 0%{transform:scale(1);} 30%{transform:scale(1.18) rotate(-4deg); box-shadow:0 0 0 6px rgba(227,165,61,0.25);} 60%{transform:scale(0.96) rotate(2deg);} 100%{transform:scale(1) rotate(0);} }
+  @keyframes flamePulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.18);} }
+  @keyframes shimmer{ 0%{background-position:-120px 0;} 100%{background-position:120px 0;} }
+  @keyframes confettiFall{ 0%{transform:translateY(-20px) rotate(0deg); opacity:1;} 100%{transform:translateY(420px) rotate(360deg); opacity:0;} }
+  @keyframes toastIn{ from{opacity:0; transform:translateX(24px);} to{opacity:1; transform:translateX(0);} }
+  @keyframes toastOut{ from{opacity:1; transform:translateX(0);} to{opacity:0; transform:translateX(24px);} }
+  @keyframes ringPulse{ 0%,100%{box-shadow:0 0 0 0 rgba(227,165,61,0.35);} 50%{box-shadow:0 0 0 8px rgba(227,165,61,0);} }
+  @keyframes checkBounce{ 0%{transform:scale(0.4); opacity:0;} 60%{transform:scale(1.2); opacity:1;} 100%{transform:scale(1);} }
+  @keyframes spinSlow{ to{transform:rotate(360deg);} }
+
+  .panel.active{animation:fadeSlideIn .4s cubic-bezier(.2,.7,.2,1);}
+  .game-panel.active{animation:fadeSlideIn .35s cubic-bezier(.2,.7,.2,1);}
+  .notes-body, .explain-card{animation:fadeSlideIn .4s ease;}
+  .quiz-q{animation:fadeSlideIn .4s ease both;}
+  .badge{transition:opacity .3s ease, transform .2s ease, border-color .3s ease;}
+  .badge.just-unlocked{animation:badgePop .6s ease;}
+  .stat-card{transition:transform .15s ease;}
+  .stat-card:hover{transform:translateY(-2px);}
+  .flame-pulse{display:inline-block;animation:flamePulse 1.4s ease-in-out infinite;}
+  .xp-bar .fill{background-size:200px 100%; background-image:linear-gradient(90deg,var(--amber),var(--amber-soft),var(--amber));}
+  .xp-bar.leveling .fill{animation:shimmer 1s linear infinite;}
+  .card-stage{animation:fadeIn .3s ease;}
+  .opt.correct, .opt.incorrect{animation:fadeSlideIn .3s ease;}
+  .opt.correct::after{content:" ✓"; color:var(--sage); font-weight:700; display:inline-block; animation:checkBounce .4s ease;}
+  .opt.incorrect::after{content:" ✗"; color:var(--brick); font-weight:700; display:inline-block; animation:checkBounce .4s ease;}
+  .arcade-card{animation:fadeSlideIn .35s ease both;}
+  .btn{position:relative; overflow:hidden;}
+  .btn::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,0.35);opacity:0;transform:scale(0);border-radius:999px;transition:transform .35s ease, opacity .5s ease;}
+  .btn:active::after{transform:scale(1.6);opacity:0.5;transition:0s;}
+  .mastery-pill{display:inline-block;font-family:var(--mono);font-size:0.72rem;color:var(--sage);background:rgba(127,168,115,0.14);border:1px solid rgba(127,168,115,0.4);border-radius:999px;padding:3px 10px;margin-bottom:8px;}
+
+  /* ---- Toasts ---- */
+  #toastStack{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:9999;max-width:300px;}
+  .toast{
+    background:var(--chalk-bg-soft);border:1px solid var(--amber);color:var(--ink);
+    padding:11px 16px;border-radius:10px;font-size:0.85rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+    animation:toastIn .3s ease both; display:flex; align-items:center; gap:8px;
+  }
+  .toast.out{animation:toastOut .3s ease both;}
+  .toast .emoji{font-size:1.1rem;}
+
+  /* ---- Confetti ---- */
+  #confettiLayer{position:fixed;inset:0;pointer-events:none;z-index:9998;overflow:hidden;}
+  .confetto{position:absolute;top:0;width:8px;height:14px;border-radius:2px;animation:confettiFall 1.6s ease-in forwards;}
+
+  /* ---- Pomodoro / Focus widget ---- */
+  #pomodoro{
+    position:fixed;bottom:18px;right:18px;z-index:500;
+    background:var(--chalk-bg-soft);border:1px solid var(--rule);border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);font-family:var(--body);overflow:hidden;
+    transition:width .25s ease, height .25s ease;
+  }
+  #pomodoro.collapsed{width:54px;height:54px;cursor:pointer;}
+  #pomodoro.collapsed #pomodoroBody{display:none;}
+  #pomodoro.collapsed #pomodoroMini{display:flex;}
+  #pomodoroMini{display:none;width:54px;height:54px;align-items:center;justify-content:center;font-size:1.4rem;}
+  #pomodoroMini.running{animation:ringPulse 1.6s ease-in-out infinite;border-radius:16px;}
+  #pomodoroBody{padding:16px 18px;width:230px;}
+  #pomodoroBody .pom-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  #pomodoroBody .pom-head h4{margin:0;font-family:var(--display);font-size:0.98rem;color:var(--amber-soft);}
+  #pomodoroBody .pom-collapse{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:1rem;}
+  .pom-mode-row{display:flex;gap:5px;margin-bottom:12px;}
+  .pom-mode-row button{flex:1;background:transparent;border:1px solid var(--rule);color:var(--ink-dim);border-radius:999px;font-family:var(--mono);font-size:0.66rem;padding:5px 4px;cursor:pointer;}
+  .pom-mode-row button.active{border-color:var(--amber);color:var(--amber-soft);background:rgba(227,165,61,0.1);}
+  .pom-time{text-align:center;font-family:var(--display);font-size:2rem;color:var(--ink);margin-bottom:10px;letter-spacing:0.02em;}
+  .pom-controls{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+  .pom-controls button{flex:1;}
+  .pom-sessions{text-align:center;font-family:var(--mono);font-size:0.7rem;color:var(--ink-dim);}
+
+  @media (max-width:600px){
+    .brand h1{font-size:1.7rem;}
+    .card-stage{height:240px;}
+    .c4-cell{width:34px;height:34px;}
+    #pomodoro{right:10px;bottom:10px;}
+    #pomodoroBody{width:200px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Study Desk<span class="dot">.</span></h1>
+      <p>Notes, flashcards, quizzes, explanations &amp; games — generated from your own material.</p>
+    </div>
+    <button class="settings-toggle" id="settingsToggle">⚙ API settings</button>
+  </header>
+
+  <section class="settings" id="settingsPanel">
+    <h3>Connect your Gemini API key</h3>
+    <div class="field-row">
+      <div class="field">
+        <label for="apiKey">Gemini API key</label>
+        <input type="password" id="apiKey" placeholder="AIza...">
+      </div>
+      <div class="field">
+        <label for="modelName">Model</label>
+        <input type="text" id="modelName" placeholder="gemini-2.5-flash" value="gemini-2.5-flash">
+      </div>
+    </div>
+    <div class="checkrow">
+      <input type="checkbox" id="rememberKey">
+      <label for="rememberKey">Remember key &amp; model in this browser (stored only on your device)</label>
+    </div>
+    <p class="hint">
+      Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+      This page calls Google's API directly from your browser — your key is never sent anywhere else.
+      Model names change over time; if you get a "model not found" error, check the current list at
+      <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener">ai.google.dev</a> and paste one in above
+      (e.g. a current flash-tier model).
+    </p>
+  </section>
+
+  <section class="materials">
+    <h2>Your material</h2>
+    <p class="sub">Paste text and/or drop in files. Everything here gets used as the source for notes, flashcards and quizzes.</p>
+    <textarea id="materialText" placeholder="Paste lecture notes, an article, a textbook excerpt..."></textarea>
+    <div class="dropzone" id="dropzone">
+      Drop a .txt, .pdf or .docx file here, or click to choose one
+      <input type="file" id="fileInput" accept=".txt,.pdf,.docx" multiple>
+    </div>
+    <ul class="source-list" id="sourceList"></ul>
+    <div class="mat-footer">
+      <span id="charCount">0 characters of material</span>
+      <button id="clearMaterials">Clear all material</button>
+    </div>
+  </section>
+
+  <nav class="tabnav" id="tabnav">
+    <button data-tab="notes" class="active"><span class="num">01</span>Notes</button>
+    <button data-tab="flashcards"><span class="num">02</span>Flashcards</button>
+    <button data-tab="quiz"><span class="num">03</span>Quiz</button>
+    <button data-tab="explain"><span class="num">04</span>Explain a topic</button>
+    <button data-tab="games"><span class="num">05</span>🎮 Games</button>
+  </nav>
+
+  <!-- NOTES -->
+  <section class="panel active" id="panel-notes">
+    <div class="panel-head">
+      <h2>Study notes</h2>
+      <div class="controls">
+        <button class="btn" id="genNotes">Generate notes</button>
+      </div>
+    </div>
+    <div id="notesError"></div>
+    <div id="notesOut"><div class="empty">No notes yet. Add material above, then generate notes.</div></div>
+  </section>
+
+  <!-- FLASHCARDS -->
+  <section class="panel" id="panel-flashcards">
+    <div class="panel-head">
+      <h2>Flashcards</h2>
+      <div class="controls">
+        <select id="cardCount">
+          <option value="8">8 cards</option>
+          <option value="12" selected>12 cards</option>
+          <option value="20">20 cards</option>
+          <option value="30">30 cards</option>
+        </select>
+        <button class="btn" id="genCards">Generate flashcards</button>
+      </div>
+    </div>
+    <div id="cardsError"></div>
+    <div id="cardsOut"><div class="empty">No flashcards yet. Add material above, then generate a deck.</div></div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="panel" id="panel-quiz">
+    <div class="panel-head">
+      <h2>Quiz</h2>
+      <div class="controls">
+        <select id="quizCount">
+          <option value="5">5 questions</option>
+          <option value="10" selected>10 questions</option>
+          <option value="15">15 questions</option>
+        </select>
+        <select id="quizDifficulty">
+          <option value="mixed" selected>Mixed difficulty</option>
+          <option value="easy">Easy / recall</option>
+          <option value="hard">Hard / applied</option>
+        </select>
+        <button class="btn" id="genQuiz">Generate quiz</button>
+      </div>
+    </div>
+    <div id="quizError"></div>
+    <div id="quizOut"><div class="empty">No quiz yet. Add material above, then generate one.</div></div>
+  </section>
+
+  <!-- EXPLAIN -->
+  <section class="panel" id="panel-explain">
+    <div class="panel-head">
+      <h2>Explain a topic</h2>
+    </div>
+    <div class="explain-input">
+      <input type="text" id="explainTopic" placeholder="e.g. Le Chatelier's principle, the Krebs cycle, Bayes' theorem...">
+      <button class="btn" id="genExplain">Explain</button>
+    </div>
+    <div class="checkrow" style="margin-bottom:16px;">
+      <input type="checkbox" id="useContext" checked>
+      <label for="useContext">Ground the explanation in my material above, if relevant</label>
+    </div>
+    <div id="explainError"></div>
+    <div class="explain-history" id="explainOut"><div class="empty">Ask about any concept you want broken down.</div></div>
+  </section>
+
+  <!-- GAMES -->
+  <section class="panel" id="panel-games">
+    <div class="panel-head">
+      <h2>🎮 Study Arcade</h2>
+    </div>
+
+    <div class="xp-bar-wrap">
+      <div class="xp-bar-top"><span>Level <strong id="gameLevel">1</strong></span><span id="gameXpText">0 / 100 XP</span></div>
+      <div class="xp-bar"><div class="fill" id="gameXpFill" style="width:0%"></div></div>
+    </div>
+    <div class="arcade-stats" id="arcadeStats"></div>
+    <div class="badge-grid" id="badgeGrid"></div>
+
+    <nav class="game-subnav" id="gameSubnav">
+      <button data-game="arcade" class="active">🎮 Arcade</button>
+      <button data-game="typing">⌨️ Speed Typing</button>
+      <button data-game="emoji">😀 Emoji Guesser</button>
+      <button data-game="connect4">🔴 Connect 4</button>
+    </nav>
+
+    <!-- ARCADE HOME -->
+    <div class="game-panel active" id="game-arcade">
+      <div class="arcade-cards">
+        <div class="arcade-card" data-go="typing"><div class="icon">⌨️</div><h3>Speed Typing</h3><p>Type key terms from your material as fast and accurately as you can.</p></div>
+        <div class="arcade-card" data-go="emoji"><div class="icon">😀</div><h3>Emoji Guesser</h3><p>Decode concepts from emoji clues. Easy, medium, hard.</p></div>
+        <div class="arcade-card" data-go="connect4"><div class="icon">🔴</div><h3>Connect 4</h3><p>Play classic Connect 4, or answer quiz questions to earn your move.</p></div>
+      </div>
+    </div>
+
+    <!-- SPEED TYPING -->
+    <div class="game-panel" id="game-typing">
+      <div class="typing-setup">
+        <select id="typingDuration">
+          <option value="30">30-second challenge</option>
+          <option value="60" selected>60-second challenge</option>
+        </select>
+        <button class="btn ghost small" id="refreshTypingTerms">↻ Refresh terms from material</button>
+        <button class="btn" id="startTyping">Start typing test</button>
+      </div>
+      <div id="typingError"></div>
+      <div id="typingOut"><div class="empty">Press "Start typing test" to begin. Terms are pulled from your flashcards, quiz and material.</div></div>
+    </div>
+
+    <!-- EMOJI GUESSER -->
+    <div class="game-panel" id="game-emoji">
+      <div class="emoji-setup">
+        <button class="btn ghost small" id="refreshEmojiSet">↻ Generate emoji set from material</button>
+        <button class="btn" id="startEmoji">Start round</button>
+      </div>
+      <div id="emojiError"></div>
+      <div id="emojiOut"><div class="empty">Generate an emoji set from your material, then start a round.</div></div>
+    </div>
+
+    <!-- CONNECT 4 -->
+    <div class="game-panel" id="game-connect4">
+      <div class="c4-setup">
+        <select id="c4Mode">
+          <option value="pvp">Basic — Player vs Player</option>
+          <option value="ai">Basic — Player vs AI</option>
+          <option value="study">Study Mode — answer to play</option>
+        </select>
+        <select id="c4Difficulty">
+          <option value="Easy">AI: Easy</option>
+          <option value="Medium" selected>AI: Medium</option>
+          <option value="Hard">AI: Hard (minimax)</option>
+        </select>
+        <button class="btn" id="startC4">New game</button>
+      </div>
+      <div id="c4Error"></div>
+      <div id="c4Out"><div class="empty">Choose a mode and press "New game" to start.</div></div>
+    </div>
+  </section>
+
+  <footer class="foot">Study Desk · runs in your browser · calls the Gemini API directly with your key</footer>
+</div>
+
+<div id="toastStack"></div>
+<div id="confettiLayer"></div>
+
+<div id="pomodoro" class="collapsed">
+  <div id="pomodoroMini">⏱️</div>
+  <div id="pomodoroBody">
+    <div class="pom-head"><h4>Focus timer</h4><button class="pom-collapse" id="pomCollapseBtn" title="Minimize">–</button></div>
+    <div class="pom-mode-row" id="pomModeRow">
+      <button data-mode="focus" class="active">Focus 25</button>
+      <button data-mode="short">Break 5</button>
+      <button data-mode="long">Break 15</button>
+    </div>
+    <div class="pom-time" id="pomTime">25:00</div>
+    <div class="pom-controls">
+      <button class="btn small" id="pomStart">Start</button>
+      <button class="btn ghost small" id="pomReset">Reset</button>
+    </div>
+    <div class="pom-sessions" id="pomSessions">0 focus sessions · 0 min today</div>
+  </div>
+</div>
+
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ---------- State ----------
+const LS_KEY = 'studyDeskState_v1';
+let state = {
+  apiKey: '', model: 'gemini-2.5-flash', remember: false,
+  materialText: '', sources: [], // {name, text}
+  notesHtml: '', cards: null, cardIndex: 0, cardFlipped: false, cardStats: {got:0, again:0},
+  quiz: null, quizSubmitted: false,
+  explainHistory: [],
+  game: {
+    xp: 0,
+    streak: 0,
+    lastPlayedDate: null,
+    gamesPlayed: { typing: 0, emoji: 0, connect4: 0 },
+    badges: [],
+    typingBest: { wpm: 0, accuracy: 0 },
+    typingTerms: null,
+    emojiSet: null,
+    emojiScore: 0,
+    emojiRoundIndex: 0,
+    connect4Wins: 0,
+    quizPerfectCount: 0
+  }
+};
+
+function defaultGameState(){
+  return {
+    xp: 0, streak: 0, lastPlayedDate: null,
+    gamesPlayed: { typing: 0, emoji: 0, connect4: 0 },
+    badges: [], typingBest: { wpm: 0, accuracy: 0 },
+    typingTerms: null, emojiSet: null, emojiScore: 0, emojiRoundIndex: 0,
+    connect4Wins: 0, quizPerfectCount: 0,
+    focusSessions: 0, focusMinutesToday: 0, focusDate: null
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      const savedGame = saved.game;
+      state = Object.assign(state, saved);
+      state.game = Object.assign(defaultGameState(), savedGame || {});
+    }
+  }catch(e){ console.warn('Could not load saved state', e); }
+}
+function saveState(){
+  try{
+    const toSave = state.remember
+      ? state
+      : Object.assign({}, state, {apiKey:''});
+    localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+  }catch(e){ console.warn('Could not save state', e); }
+}
+
+// ---------- Helpers ----------
+function el(id){ return document.getElementById(id); }
+function escapeHtml(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function combinedMaterial(){
+  const parts = [];
+  if(state.materialText.trim()) parts.push(state.materialText.trim());
+  state.sources.forEach(s => parts.push(`--- Source: ${s.name} ---\n${s.text}`));
+  let combined = parts.join('\n\n');
+  const LIMIT = 60000;
+  if(combined.length > LIMIT){
+    combined = combined.slice(0, LIMIT) + '\n\n[...material truncated for length...]';
+  }
+  return combined;
+}
+
+function showError(containerId, msg){
+  el(containerId).innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
+}
+function clearError(containerId){
+  el(containerId).innerHTML = '';
+}
+
+// ---------- Toasts & celebration ----------
+function showToast(emoji, msg, ms=3200){
+  const stack = el('toastStack');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<span class="emoji">${emoji}</span><span>${escapeHtml(msg)}</span>`;
+  stack.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 280);
+  }, ms);
+}
+function burstConfetti(count=60){
+  const layer = el('confettiLayer');
+  const colors = ['#e3a53d','#f0c97a','#7fa873','#c1604a','#ece8dc'];
+  for(let i=0;i<count;i++){
+    const c = document.createElement('div');
+    c.className = 'confetto';
+    c.style.left = Math.random()*100 + 'vw';
+    c.style.background = colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDuration = (1.1 + Math.random()*0.9) + 's';
+    c.style.animationDelay = (Math.random()*0.3) + 's';
+    c.style.transform = `rotate(${Math.random()*360}deg)`;
+    layer.appendChild(c);
+    setTimeout(() => c.remove(), 2400);
+  }
+}
+
+// ---------- Gemini call ----------
+async function callGemini(prompt, opts={}){
+  if(!state.apiKey.trim()){
+    throw new Error('Add your Gemini API key in "API settings" above first.');
+  }
+  const model = (state.model || 'gemini-2.5-flash').trim();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
+  if(opts.json){
+    body.generationConfig = { responseMimeType: 'application/json' };
+  }
+  let res;
+  try{
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.apiKey.trim() },
+      body: JSON.stringify(body)
+    });
+  }catch(e){
+    throw new Error('Network request failed. Check your internet connection.');
+  }
+  if(!res.ok){
+    let detail = '';
+    try{ const j = await res.json(); detail = j.error?.message || ''; }catch(e){}
+    if(res.status === 400 && /API key/i.test(detail)) throw new Error('That API key was rejected. Double-check it in settings.');
+    if(res.status === 403) throw new Error('Request forbidden — check that your API key is valid and has Gemini API access.');
+    if(res.status === 404) throw new Error(`Model "${model}" was not found. Try a different model name in settings (e.g. a current flash-tier model from ai.google.dev/gemini-api/docs/models).`);
+    if(res.status === 429) throw new Error('Rate limit or quota exceeded for this key. Wait a bit and try again.');
+    throw new Error(detail || `Request failed with status ${res.status}.`);
+  }
+  const data = await res.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('The model returned no content. It may have blocked the response — try rephrasing.');
+  const text = (candidate.content?.parts || []).map(p => p.text || '').join('');
+  if(!text) throw new Error('The model returned an empty response.');
+  return text;
+}
+
+function parseJsonLoose(text){
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+  return JSON.parse(cleaned);
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('#tabnav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tabnav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    el('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- Settings ----------
+el('settingsToggle').addEventListener('click', () => {
+  el('settingsPanel').classList.toggle('open');
+});
+el('apiKey').addEventListener('input', e => { state.apiKey = e.target.value; saveState(); });
+el('modelName').addEventListener('input', e => { state.model = e.target.value; saveState(); });
+el('rememberKey').addEventListener('change', e => { state.remember = e.target.checked; saveState(); });
+
+// ---------- Materials ----------
+el('materialText').addEventListener('input', e => {
+  state.materialText = e.target.value;
+  updateCharCount();
+  saveState();
+});
+
+function renderSources(){
+  const list = el('sourceList');
+  list.innerHTML = '';
+  state.sources.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="name">📄 ${escapeHtml(s.name)} (${s.text.length.toLocaleString()} chars)</span>`;
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.title = 'Remove';
+    btn.addEventListener('click', () => { state.sources.splice(i,1); renderSources(); updateCharCount(); saveState(); });
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+function updateCharCount(){
+  el('charCount').textContent = combinedMaterial().length.toLocaleString() + ' characters of material';
+}
+el('clearMaterials').addEventListener('click', () => {
+  state.materialText = ''; state.sources = [];
+  el('materialText').value = '';
+  renderSources(); updateCharCount(); saveState();
+});
+
+async function handleFiles(files){
+  for(const file of files){
+    try{
+      const text = await extractText(file);
+      state.sources.push({ name: file.name, text: text.trim() });
+    }catch(e){
+      alert(`Could not read "${file.name}": ${e.message}`);
+    }
+  }
+  renderSources(); updateCharCount(); saveState();
+}
+
+function extractText(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'txt'){
+    return file.text();
+  }
+  if(ext === 'pdf'){
+    return file.arrayBuffer().then(async buf => {
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let out = '';
+      for(let i=1;i<=pdf.numPages;i++){
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        out += content.items.map(it => it.str).join(' ') + '\n\n';
+      }
+      return out;
+    });
+  }
+  if(ext === 'docx'){
+    return file.arrayBuffer().then(buf =>
+      mammoth.extractRawText({ arrayBuffer: buf }).then(r => r.value)
+    );
+  }
+  return Promise.reject(new Error('Unsupported file type — use .txt, .pdf or .docx'));
+}
+
+const dz = el('dropzone');
+dz.addEventListener('click', () => el('fileInput').click());
+el('fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value=''; });
+['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e => { handleFiles(e.dataTransfer.files); });
+
+// ---------- NOTES ----------
+el('genNotes').addEventListener('click', async () => {
+  clearError('notesError');
+  const material = combinedMaterial();
+  if(!material.trim()){ showError('notesError', 'Add some material first — paste text or drop in a file.'); return; }
+  const btn = el('genNotes');
+  btn.disabled = true;
+  el('notesOut').innerHTML = '<div class="loading-row"><span class="spinner"></span>Writing notes...</div>';
+  try{
+    const prompt = `You are a meticulous study assistant. Read the material below and produce clear, well-organized study notes in Markdown.
+Structure: a one-paragraph summary at the top, then headings for each major topic, with concise bullet points underneath, bolding key terms the first time they appear. Add a short "Key terms" section at the end with brief definitions. Be faithful to the material; do not invent facts not supported by it.
+
+MATERIAL:
+"""${material}"""`;
+    const text = await callGemini(prompt);
+    state.notesHtml = marked.parse(text);
+    el('notesOut').innerHTML = `<div class="notes-body">${state.notesHtml}</div>`;
+    saveState();
+  }catch(e){
+    showError('notesError', e.message);
+    el('notesOut').innerHTML = state.notesHtml ? `<div class="notes-body">${state.notesHtml}</div>` : '<div class="empty">No notes yet.</div>';
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+// ---------- FLASHCARDS ----------
+el('genCards').addEventListener('click', async () => {
+  clearError('cardsError');
+  const material = combinedMaterial();
+  if(!material.trim()){ showError('cardsError', 'Add some material first — paste text or drop in a file.'); return; }
+  const count = el('cardCount').value;
+  const btn = el('genCards');
+  btn.disabled = true;
+  el('cardsOut').innerHTML = '<div class="loading-row"><span class="spinner"></span>Building flashcards...</div>';
+  try{
+    const prompt = `Based only on the material below, create exactly ${count} flashcards for studying it. Each flashcard should test one discrete fact, definition, or concept. Keep the front short (a question or term) and the back concise (1-3 sentences).
+Respond with ONLY valid JSON, no markdown fences, in this exact shape:
+{"cards":[{"front":"...","back":"..."}]}
+
+MATERIAL:
+"""${material}"""`;
+    const text = await callGemini(prompt, {json:true});
+    const parsed = parseJsonLoose(text);
+    if(!parsed.cards || !parsed.cards.length) throw new Error('No flashcards were returned — try again.');
+    state.cards = parsed.cards;
+    state.cardIndex = 0;
+    state.cardFlipped = false;
+    state.cardStats = {got:0, again:0};
+    state.cardOrder = parsed.cards.map((_,i) => i);
+    state.cardMastered = [];
+    renderCards();
+    saveState();
+  }catch(e){
+    showError('cardsError', e.message + (e instanceof SyntaxError ? ' (could not parse the model\'s response — try again)' : ''));
+    if(!state.cards) el('cardsOut').innerHTML = '<div class="empty">No flashcards yet.</div>';
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+function renderCards(){
+  if(!state.cards || !state.cards.length){
+    el('cardsOut').innerHTML = '<div class="empty">No flashcards yet.</div>';
+    return;
+  }
+  if(!state.cardOrder || !state.cardOrder.length) state.cardOrder = state.cards.map((_,i) => i);
+  if(!state.cardMastered) state.cardMastered = [];
+  if(state.cardOrder.length === 0){
+    el('cardsOut').innerHTML = `
+      <div class="deck-wrap">
+        <div class="card-stage" style="display:flex;align-items:center;justify-content:center;">
+          <div class="card-face" style="position:relative;inset:auto;width:100%;height:100%;">
+            <div><div style="font-size:2rem;margin-bottom:8px;">🎉</div>Deck mastered! Every card marked "Got it".</div>
+          </div>
+        </div>
+        <button class="btn" id="cardsRestartDeck">Practice deck again</button>
+        <div class="deck-stats">Got it: ${state.cardStats.got} &nbsp;·&nbsp; Still learning: ${state.cardStats.again}</div>
+      </div>`;
+    el('cardsRestartDeck').addEventListener('click', () => {
+      state.cardOrder = state.cards.map((_,i) => i);
+      state.cardMastered = [];
+      state.cardIndex = 0;
+      renderCards(); saveState();
+    });
+    return;
+  }
+  if(state.cardIndex >= state.cardOrder.length) state.cardIndex = 0;
+  const realIdx = state.cardOrder[state.cardIndex];
+  const card = state.cards[realIdx];
+  const masteredCount = state.cardMastered.length;
+  const pct = Math.round((masteredCount / state.cards.length) * 100);
+  el('cardsOut').innerHTML = `
+    <div class="deck-wrap">
+      <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="card-stage">
+        <div class="card-inner ${state.cardFlipped ? 'flipped':''}" id="cardInner">
+          <div class="card-face front"><span class="tag">FRONT · click to flip</span>${escapeHtml(card.front)}</div>
+          <div class="card-face back"><span class="tag">BACK</span>${escapeHtml(card.back)}</div>
+        </div>
+      </div>
+      <div class="deck-controls">
+        <button class="icon-btn" id="prevCard" title="Previous">‹</button>
+        <span class="count">${state.cardIndex+1} / ${state.cardOrder.length}</span>
+        <button class="icon-btn" id="nextCard" title="Next">›</button>
+      </div>
+      <div class="rate-row">
+        <button class="again" id="rateAgain">↺ Still learning</button>
+        <button class="got" id="rateGot">✓ Got it</button>
+      </div>
+      <div class="deck-stats">Mastered: ${masteredCount} / ${state.cards.length} &nbsp;·&nbsp; Got it: ${state.cardStats.got} &nbsp;·&nbsp; Still learning: ${state.cardStats.again}</div>
+    </div>`;
+  el('cardInner').addEventListener('click', () => { state.cardFlipped = !state.cardFlipped; renderCards(); });
+  el('prevCard').addEventListener('click', (e) => { e.stopPropagation(); moveCard(-1); });
+  el('nextCard').addEventListener('click', (e) => { e.stopPropagation(); moveCard(1); });
+  el('rateGot').addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.cardStats.got++;
+    if(!state.cardMastered.includes(realIdx)){ state.cardMastered.push(realIdx); awardXp(4); } else { awardXp(1); }
+    checkAchievements();
+    state.cardOrder.splice(state.cardIndex, 1);
+    state.cardFlipped = false;
+    if(state.cardIndex >= state.cardOrder.length) state.cardIndex = 0;
+    renderCards();
+    saveState();
+  });
+  el('rateAgain').addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.cardStats.again++;
+    state.cardOrder.splice(state.cardIndex, 1);
+    const insertPos = Math.min(state.cardOrder.length, state.cardIndex + 3);
+    state.cardOrder.splice(insertPos, 0, realIdx);
+    state.cardFlipped = false;
+    if(state.cardIndex >= state.cardOrder.length) state.cardIndex = 0;
+    renderCards();
+    saveState();
+  });
+}
+function moveCard(dir){
+  state.cardIndex = (state.cardIndex + dir + state.cardOrder.length) % state.cardOrder.length;
+  state.cardFlipped = false;
+  renderCards();
+  saveState();
+}
+
+// ---------- QUIZ ----------
+el('genQuiz').addEventListener('click', async () => {
+  clearError('quizError');
+  const material = combinedMaterial();
+  if(!material.trim()){ showError('quizError', 'Add some material first — paste text or drop in a file.'); return; }
+  const count = el('quizCount').value;
+  const difficulty = el('quizDifficulty').value;
+  const btn = el('genQuiz');
+  btn.disabled = true;
+  el('quizOut').innerHTML = '<div class="loading-row"><span class="spinner"></span>Writing quiz questions...</div>';
+  try{
+    const diffText = difficulty === 'easy' ? 'straightforward recall questions' : difficulty === 'hard' ? 'harder, applied/analytical questions that require connecting ideas' : 'a mix of recall and applied questions';
+    const prompt = `Based only on the material below, write exactly ${count} multiple-choice questions (${diffText}). Each question has exactly 4 options, only one correct. Include a one-sentence explanation of the correct answer.
+Respond with ONLY valid JSON, no markdown fences, in this exact shape:
+{"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}]}
+
+MATERIAL:
+"""${material}"""`;
+    const text = await callGemini(prompt, {json:true});
+    const parsed = parseJsonLoose(text);
+    if(!parsed.questions || !parsed.questions.length) throw new Error('No quiz questions were returned — try again.');
+    state.quiz = parsed.questions;
+    state.quizSubmitted = false;
+    renderQuiz();
+    saveState();
+  }catch(e){
+    showError('quizError', e.message + (e instanceof SyntaxError ? ' (could not parse the model\'s response — try again)' : ''));
+    if(!state.quiz) el('quizOut').innerHTML = '<div class="empty">No quiz yet.</div>';
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+function renderQuiz(){
+  if(!state.quiz || !state.quiz.length){
+    el('quizOut').innerHTML = '<div class="empty">No quiz yet.</div>';
+    return;
+  }
+  let html = '';
+  if(state.quizSubmitted){
+    let correct = 0;
+    state.quiz.forEach((q, i) => { if(q._selected === q.correctIndex) correct++; });
+    const missed = state.quiz.length - correct;
+    html += `<div class="score-banner"><div><div class="big">${correct} / ${state.quiz.length}</div><div>correct</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost small" id="retakeQuiz">Retake this quiz</button>${missed > 0 ? `<button class="btn ghost small" id="retakeMissed">Retake ${missed} missed only</button>` : ''}</div></div>`;
+  }
+  state.quiz.forEach((q, qi) => {
+    html += `<div class="quiz-q" data-qi="${qi}"><div class="qtitle"><span class="qnum">Q${qi+1}.</span>${escapeHtml(q.question)}</div>`;
+    q.options.forEach((opt, oi) => {
+      let cls = 'opt';
+      if(state.quizSubmitted){
+        if(oi === q.correctIndex) cls += ' correct';
+        else if(oi === q._selected) cls += ' incorrect';
+      }
+      html += `<label class="${cls}"><input type="radio" name="q${qi}" value="${oi}" ${q._selected===oi?'checked':''} ${state.quizSubmitted?'disabled':''}> ${escapeHtml(opt)}</label>`;
+    });
+    if(state.quizSubmitted){
+      html += `<div class="qexplain show">${escapeHtml(q.explanation || '')}</div>`;
+    }
+    html += `</div>`;
+  });
+  if(!state.quizSubmitted){
+    html += `<button class="btn" id="submitQuiz">Submit quiz</button>`;
+  }
+  el('quizOut').innerHTML = html;
+
+  if(!state.quizSubmitted){
+    document.querySelectorAll('#quizOut .quiz-q').forEach(div => {
+      const qi = parseInt(div.dataset.qi, 10);
+      div.querySelectorAll('input[type=radio]').forEach(r => {
+        r.addEventListener('change', e => { state.quiz[qi]._selected = parseInt(e.target.value,10); saveState(); });
+      });
+    });
+    el('submitQuiz').addEventListener('click', () => {
+      state.quizSubmitted = true;
+      let correct = 0;
+      state.quiz.forEach(q => { if(q._selected === q.correctIndex) correct++; });
+      awardXp(correct * 8);
+      if(correct === state.quiz.length){ state.game.quizPerfectCount = (state.game.quizPerfectCount||0) + 1; }
+      checkAchievements();
+      renderQuiz();
+      saveState();
+    });
+  } else {
+    el('retakeQuiz').addEventListener('click', () => {
+      state.quiz.forEach(q => { delete q._selected; });
+      state.quizSubmitted = false;
+      renderQuiz();
+      saveState();
+    });
+    const retakeMissedBtn = el('retakeMissed');
+    if(retakeMissedBtn){
+      retakeMissedBtn.addEventListener('click', () => {
+        state.quiz = state.quiz.filter(q => q._selected !== q.correctIndex);
+        state.quiz.forEach(q => { delete q._selected; });
+        state.quizSubmitted = false;
+        renderQuiz();
+        saveState();
+      });
+    }
+  }
+}
+
+// ---------- EXPLAIN ----------
+el('genExplain').addEventListener('click', () => doExplain());
+el('explainTopic').addEventListener('keydown', e => { if(e.key === 'Enter') doExplain(); });
+
+async function doExplain(){
+  clearError('explainError');
+  const topic = el('explainTopic').value.trim();
+  if(!topic){ showError('explainError', 'Type a topic or concept to explain.'); return; }
+  const useContext = el('useContext').checked;
+  const material = combinedMaterial();
+  const btn = el('genExplain');
+  btn.disabled = true;
+  const loadingId = 'loading-' + Date.now();
+  el('explainOut').insertAdjacentHTML('afterbegin', `<div class="loading-row" id="${loadingId}"><span class="spinner"></span>Explaining "${escapeHtml(topic)}"...</div>`);
+  if(el('explainOut').querySelector('.empty')) el('explainOut').querySelector('.empty').remove();
+  try{
+    let prompt;
+    if(useContext && material.trim()){
+      prompt = `Explain the topic "${topic}" clearly for a student, in Markdown. If the material below is relevant to this topic, ground your explanation in it and reference specifics from it. If the material is not relevant, just explain the topic well using your general knowledge — say so briefly. Use simple language first, then add a touch more depth, plus one short illustrative example.
+
+MATERIAL:
+"""${material}"""`;
+    } else {
+      prompt = `Explain the topic "${topic}" clearly for a student, in Markdown. Use simple language first, then add a touch more depth, plus one short illustrative example.`;
+    }
+    const text = await callGemini(prompt);
+    const html = marked.parse(text);
+    state.explainHistory.unshift({ topic, html });
+    state.explainHistory = state.explainHistory.slice(0, 12);
+    renderExplain();
+    el('explainTopic').value = '';
+    saveState();
+  }catch(e){
+    showError('explainError', e.message);
+    document.getElementById(loadingId)?.remove();
+  }finally{
+    btn.disabled = false;
+  }
+}
+function renderExplain(){
+  if(!state.explainHistory.length){
+    el('explainOut').innerHTML = '<div class="empty">Ask about any concept you want broken down.</div>';
+    return;
+  }
+  el('explainOut').innerHTML = state.explainHistory.map(item =>
+    `<div class="explain-card"><h3>${escapeHtml(item.topic)}</h3><div class="body">${item.html}</div></div>`
+  ).join('');
+}
+
+// ---------- GAMIFICATION CORE ----------
+const BADGES = [
+  { id:'flashcard_master', emoji:'🏆', name:'Flashcard Master', desc:'Mark 20 flashcards "Got it"', check: s => s.cardStats && s.cardStats.got >= 20 },
+  { id:'quiz_champion', emoji:'🏆', name:'Quiz Champion', desc:'Score 100% on a quiz', check: s => (s.game.quizPerfectCount||0) >= 1 },
+  { id:'typing_expert', emoji:'🏆', name:'Typing Expert', desc:'Reach 60 WPM', check: s => s.game.typingBest.wpm >= 60 },
+  { id:'emoji_decoder', emoji:'🏆', name:'Emoji Decoder', desc:'Score 100 points in Emoji Guesser', check: s => s.game.emojiScore >= 100 },
+  { id:'connect4_strategist', emoji:'🏆', name:'Connect 4 Strategist', desc:'Win 3 games of Connect 4', check: s => s.game.connect4Wins >= 3 },
+  { id:'focused_mind', emoji:'🧘', name:'Focused Mind', desc:'Complete 5 focus timer sessions', check: s => (s.game.focusSessions||0) >= 5 }
+];
+function levelFromXp(xp){ return Math.floor(xp / 100) + 1; }
+function awardXp(amount){
+  if(!amount) return;
+  const before = levelFromXp(state.game.xp||0);
+  state.game.xp = Math.max(0, (state.game.xp||0) + amount);
+  const after = levelFromXp(state.game.xp);
+  updateStreak();
+  renderArcade();
+  if(after > before){
+    burstConfetti(80);
+    showToast('🎉', `Level up! You're now level ${after}.`, 4000);
+  }
+}
+function updateStreak(){
+  const today = new Date().toDateString();
+  if(state.game.lastPlayedDate !== today){
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    state.game.streak = (state.game.lastPlayedDate === yesterday) ? (state.game.streak||0) + 1 : 1;
+    state.game.lastPlayedDate = today;
+  }
+}
+function checkAchievements(){
+  const newly = [];
+  BADGES.forEach(b => {
+    if(!state.game.badges.includes(b.id) && b.check(state)){
+      state.game.badges.push(b.id);
+      newly.push(b);
+    }
+  });
+  saveState();
+  renderArcade();
+  newly.forEach(b => {
+    showToast(b.emoji, `Badge unlocked: ${b.name}`, 4000);
+    const node = document.getElementById('badge-' + b.id);
+    if(node){
+      node.classList.add('just-unlocked');
+      setTimeout(() => node.classList.remove('just-unlocked'), 650);
+    }
+  });
+}
+function renderArcade(){
+  const xp = state.game.xp || 0;
+  const level = levelFromXp(xp);
+  const xpIntoLevel = xp % 100;
+  el('gameLevel').textContent = level;
+  el('gameXpText').textContent = `${xpIntoLevel} / 100 XP`;
+  el('gameXpFill').style.width = xpIntoLevel + '%';
+  const gp = state.game.gamesPlayed;
+  el('arcadeStats').innerHTML = `
+    <div class="stat-card"><div class="val">${(gp.typing||0)+(gp.emoji||0)+(gp.connect4||0)}</div><div class="lbl">Games played</div></div>
+    <div class="stat-card"><div class="val">${state.game.streak||0}<span class="flame-pulse">🔥</span></div><div class="lbl">Day streak</div></div>
+    <div class="stat-card"><div class="val">${state.game.typingBest.wpm||0}</div><div class="lbl">Best WPM</div></div>
+    <div class="stat-card"><div class="val">${state.game.emojiScore||0}</div><div class="lbl">Emoji points</div></div>
+    <div class="stat-card"><div class="val">${state.game.connect4Wins||0}</div><div class="lbl">Connect 4 wins</div></div>
+    <div class="stat-card"><div class="val">${state.game.focusSessions||0}</div><div class="lbl">Focus sessions</div></div>
+  `;
+  el('badgeGrid').innerHTML = BADGES.map(b => `
+    <div class="badge ${state.game.badges.includes(b.id)?'unlocked':''}" id="badge-${b.id}">
+      <span class="emoji">${b.emoji}</span>
+      <div><div class="name">${b.name}</div><div class="desc">${b.desc}</div></div>
+    </div>`).join('');
+}
+
+// ---------- Game subnav ----------
+document.querySelectorAll('#gameSubnav button').forEach(btn => {
+  btn.addEventListener('click', () => switchGamePanel(btn.dataset.game));
+});
+document.querySelectorAll('.arcade-card').forEach(card => {
+  card.addEventListener('click', () => switchGamePanel(card.dataset.go));
+});
+function switchGamePanel(name){
+  document.querySelectorAll('#gameSubnav button').forEach(b => b.classList.toggle('active', b.dataset.game === name));
+  document.querySelectorAll('.game-panel').forEach(p => p.classList.toggle('active', p.id === 'game-' + name));
+}
+
+// ---------- Term pool (shared by Typing & Emoji games) ----------
+function getFallbackTerms(){
+  const terms = [];
+  if(state.cards) state.cards.forEach(c => { if(c.front) terms.push(c.front.replace(/[?.!]+$/,'').trim()); });
+  if(state.quiz) state.quiz.forEach(q => {
+    if(q.options && typeof q.correctIndex === 'number' && q.options[q.correctIndex]) terms.push(q.options[q.correctIndex]);
+  });
+  return [...new Set(terms.filter(t => t && t.length > 1 && t.length < 40))];
+}
+
+// ---------- SPEED TYPING ----------
+let typingState = null;
+async function generateTypingTerms(force){
+  if(state.game.typingTerms && state.game.typingTerms.length && !force) return state.game.typingTerms;
+  const material = combinedMaterial();
+  const fallback = getFallbackTerms();
+  if(material.trim()){
+    try{
+      const prompt = `From the material below, extract 30 short key terms, names, or vocabulary words/phrases worth memorizing for a typing-practice game. Each must be 2-22 characters, no punctuation at the ends. Respond with ONLY valid JSON, no markdown fences: {"terms":["...","..."]}
+
+MATERIAL:
+"""${material}"""`;
+      const text = await callGemini(prompt, {json:true});
+      const parsed = parseJsonLoose(text);
+      if(parsed.terms && parsed.terms.length){
+        state.game.typingTerms = [...new Set(parsed.terms.concat(fallback))].slice(0, 40);
+        saveState();
+        return state.game.typingTerms;
+      }
+    }catch(e){ /* fall through to fallback */ }
+  }
+  if(fallback.length){ state.game.typingTerms = fallback; saveState(); return fallback; }
+  return null;
+}
+el('refreshTypingTerms').addEventListener('click', async () => {
+  clearError('typingError');
+  const btn = el('refreshTypingTerms');
+  btn.disabled = true;
+  try{
+    const terms = await generateTypingTerms(true);
+    if(!terms) showError('typingError', 'Add study material first, or generate flashcards/a quiz, then refresh.');
+  }catch(e){ showError('typingError', e.message); }
+  finally{ btn.disabled = false; }
+});
+el('startTyping').addEventListener('click', async () => {
+  clearError('typingError');
+  const btn = el('startTyping');
+  btn.disabled = true;
+  try{
+    const terms = await generateTypingTerms(false);
+    if(!terms || !terms.length){
+      showError('typingError', 'Add study material first, or generate flashcards/a quiz to supply terms.');
+      return;
+    }
+    startTypingRound(terms, parseInt(el('typingDuration').value, 10));
+  }catch(e){ showError('typingError', e.message); }
+  finally{ btn.disabled = false; }
+});
+function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function startTypingRound(terms, seconds){
+  typingState = {
+    queue: shuffle(terms), idx: 0, current: '',
+    correctChars: 0, totalChars: 0, wordsCompleted: 0, streak: 0, bestStreak: 0,
+    timeLeft: seconds, totalTime: seconds, timer: null, done: false
+  };
+  nextTypingWord();
+  renderTyping();
+  typingState.timer = setInterval(() => {
+    typingState.timeLeft--;
+    if(typingState.timeLeft <= 0){ finishTyping(); } else { renderTyping(); }
+  }, 1000);
+}
+function nextTypingWord(){
+  if(typingState.idx >= typingState.queue.length){ typingState.queue = shuffle(typingState.queue); typingState.idx = 0; }
+  typingState.current = typingState.queue[typingState.idx++];
+}
+function renderTyping(){
+  if(!typingState) return;
+  if(typingState.done){
+    const acc = typingState.totalChars ? Math.round((typingState.correctChars/typingState.totalChars)*100) : 100;
+    const wpm = Math.round((typingState.wordsCompleted / (typingState.totalTime/60)) || 0);
+    el('typingOut').innerHTML = `
+      <div class="typing-stage typing-result">
+        <div class="big">${wpm} WPM</div>
+        <div>${acc}% accuracy · ${typingState.wordsCompleted} terms typed · best streak ${typingState.bestStreak}</div>
+        <button class="btn" id="typingAgain" style="margin-top:16px;">Play again</button>
+      </div>`;
+    el('typingAgain').addEventListener('click', () => { generateTypingTerms(false).then(t => startTypingRound(t, typingState.totalTime)); });
+    return;
+  }
+  el('typingOut').innerHTML = `
+    <div class="typing-stage">
+      <div class="typing-word">${escapeHtml(typingState.current)}</div>
+      <input type="text" class="typing-input" id="typingInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type it here...">
+      <div class="typing-hud">
+        <div><span class="n">${typingState.timeLeft}s</span>left</div>
+        <div><span class="n">${typingState.wordsCompleted}</span>typed</div>
+        <div><span class="n">${typingState.streak}</span>streak</div>
+      </div>
+    </div>`;
+  const inp = el('typingInput');
+  inp.focus();
+  inp.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){
+      const val = inp.value;
+      typingState.totalChars += typingState.current.length;
+      if(val.trim().toLowerCase() === typingState.current.trim().toLowerCase()){
+        typingState.correctChars += typingState.current.length;
+        typingState.wordsCompleted++;
+        typingState.streak++;
+        typingState.bestStreak = Math.max(typingState.bestStreak, typingState.streak);
+      } else {
+        typingState.streak = 0;
+      }
+      nextTypingWord();
+      renderTyping();
+    }
+  });
+}
+function finishTyping(){
+  clearInterval(typingState.timer);
+  typingState.done = true;
+  const acc = typingState.totalChars ? Math.round((typingState.correctChars/typingState.totalChars)*100) : 100;
+  const wpm = Math.round((typingState.wordsCompleted / (typingState.totalTime/60)) || 0);
+  state.game.gamesPlayed.typing = (state.game.gamesPlayed.typing||0) + 1;
+  if(wpm > (state.game.typingBest.wpm||0) || (wpm === state.game.typingBest.wpm && acc > state.game.typingBest.accuracy)){
+    state.game.typingBest = { wpm, accuracy: acc };
+  }
+  awardXp(typingState.wordsCompleted * 5 + Math.round(acc/5));
+  checkAchievements();
+  saveState();
+  renderTyping();
+}
+
+// ---------- EMOJI GUESSER ----------
+let emojiState = null;
+async function generateEmojiSet(force){
+  if(state.game.emojiSet && state.game.emojiSet.length && !force) return state.game.emojiSet;
+  const material = combinedMaterial();
+  if(!material.trim()) return null;
+  const prompt = `From the material below, create 15 "emoji guesser" clues. For each, pick a key concept/term and represent it with 2-4 emoji that visually hint at it, plus a difficulty (easy/medium/hard) based on how obscure the concept is. Respond with ONLY valid JSON, no markdown fences:
+{"items":[{"term":"...","emojis":"☀️🌱","difficulty":"easy"}]}
+
+MATERIAL:
+"""${material}"""`;
+  const text = await callGemini(prompt, {json:true});
+  const parsed = parseJsonLoose(text);
+  if(!parsed.items || !parsed.items.length) throw new Error('No emoji clues were returned — try again.');
+  state.game.emojiSet = parsed.items;
+  state.game.emojiRoundIndex = 0;
+  saveState();
+  return state.game.emojiSet;
+}
+el('refreshEmojiSet').addEventListener('click', async () => {
+  clearError('emojiError');
+  const material = combinedMaterial();
+  if(!material.trim()){ showError('emojiError', 'Add some study material first.'); return; }
+  const btn = el('refreshEmojiSet');
+  btn.disabled = true;
+  el('emojiOut').innerHTML = '<div class="loading-row"><span class="spinner"></span>Picking emoji clues...</div>';
+  try{
+    await generateEmojiSet(true);
+    el('emojiOut').innerHTML = '<div class="empty">Emoji set ready — press "Start round".</div>';
+  }catch(e){ showError('emojiError', e.message); el('emojiOut').innerHTML = '<div class="empty">No emoji set yet.</div>'; }
+  finally{ btn.disabled = false; }
+});
+el('startEmoji').addEventListener('click', async () => {
+  clearError('emojiError');
+  const btn = el('startEmoji');
+  btn.disabled = true;
+  try{
+    let set = state.game.emojiSet;
+    if(!set || !set.length) set = await generateEmojiSet(false);
+    if(!set || !set.length){ showError('emojiError', 'Add study material and generate an emoji set first.'); return; }
+    emojiState = { items: shuffle(set), idx: 0, roundScore: 0, revealed: false };
+    renderEmoji();
+  }catch(e){ showError('emojiError', e.message); }
+  finally{ btn.disabled = false; }
+});
+const DIFF_POINTS = { easy: 5, medium: 10, hard: 20 };
+function renderEmoji(){
+  if(!emojiState) return;
+  if(emojiState.idx >= emojiState.items.length){
+    state.game.gamesPlayed.emoji = (state.game.gamesPlayed.emoji||0) + 1;
+    saveState();
+    el('emojiOut').innerHTML = `
+      <div class="emoji-stage typing-result">
+        <div class="big">${emojiState.roundScore} pts</div>
+        <div>Round complete — total emoji score: ${state.game.emojiScore}</div>
+        <button class="btn" id="emojiAgain" style="margin-top:16px;">Play another round</button>
+      </div>`;
+    el('emojiAgain').addEventListener('click', () => el('startEmoji').click());
+    return;
+  }
+  const item = emojiState.items[emojiState.idx];
+  const diff = (item.difficulty||'medium').toLowerCase();
+  el('emojiOut').innerHTML = `
+    <div class="emoji-stage">
+      <div class="emoji-diff ${diff}">${diff} · ${DIFF_POINTS[diff]||10} pts</div>
+      <div class="emoji-display">${item.emojis}</div>
+      <input type="text" class="emoji-input" id="emojiInput" placeholder="What concept is this?" ${emojiState.revealed?'disabled':''}>
+      <div id="emojiRevealBox"></div>
+      <div class="emoji-score-row"><div>Round score: ${emojiState.roundScore}</div><div>Card ${emojiState.idx+1} / ${emojiState.items.length}</div></div>
+    </div>`;
+  if(!emojiState.revealed){
+    const inp = el('emojiInput');
+    inp.focus();
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter') submitEmojiGuess(item, inp.value); });
+  }
+}
+function submitEmojiGuess(item, guess){
+  const diff = (item.difficulty||'medium').toLowerCase();
+  const points = DIFF_POINTS[diff] || 10;
+  const correct = guess.trim().toLowerCase() === item.term.trim().toLowerCase() ||
+    item.term.toLowerCase().includes(guess.trim().toLowerCase()) && guess.trim().length > 2;
+  emojiState.revealed = true;
+  if(correct){
+    emojiState.roundScore += points;
+    state.game.emojiScore = (state.game.emojiScore||0) + points;
+    awardXp(points);
+  }
+  checkAchievements();
+  saveState();
+  el('emojiRevealBox').innerHTML = `<div class="emoji-reveal ${correct?'correct':'incorrect'}">${correct?'✓ Correct':'✗ '+escapeHtml(item.term)}</div>
+    <button class="btn small" id="emojiNext" style="margin-top:14px;">Next ›</button>`;
+  el('emojiInput').disabled = true;
+  el('emojiNext').addEventListener('click', () => { emojiState.idx++; emojiState.revealed = false; renderEmoji(); });
+}
+
+// ---------- CONNECT 4 ----------
+let c4State = null;
+const C4_ROWS = 6, C4_COLS = 7;
+el('startC4').addEventListener('click', async () => {
+  clearError('c4Error');
+  const mode = el('c4Mode').value;
+  if(mode === 'study' && !(state.quiz && state.quiz.length)){
+    showError('c4Error', 'Generate a quiz from your material in the Quiz tab first, then come back to Study Mode.');
+    return;
+  }
+  c4State = {
+    mode,
+    difficulty: el('c4Difficulty').value,
+    board: Array.from({length:C4_ROWS}, () => Array(C4_COLS).fill(0)),
+    turn: 1, // 1 = player/red avatar amber, 2 = AI or player 2
+    pendingCol: null, winner: null, full: false,
+    questionPool: mode === 'study' ? shuffle(state.quiz) : null,
+    qIdx: 0
+  };
+  renderC4();
+});
+function c4DropRow(board, col){
+  for(let r = C4_ROWS-1; r >= 0; r--){ if(board[r][col] === 0) return r; }
+  return -1;
+}
+function c4CheckWin(board, player){
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for(let r=0;r<C4_ROWS;r++) for(let c=0;c<C4_COLS;c++){
+    if(board[r][c] !== player) continue;
+    for(const [dr,dc] of dirs){
+      let count = 1;
+      for(let k=1;k<4;k++){
+        const nr=r+dr*k, nc=c+dc*k;
+        if(nr<0||nr>=C4_ROWS||nc<0||nc>=C4_COLS||board[nr][nc]!==player) break;
+        count++;
+      }
+      if(count>=4) return true;
+    }
+  }
+  return false;
+}
+function c4ValidCols(board){ const cols=[]; for(let c=0;c<C4_COLS;c++){ if(board[0][c]===0) cols.push(c); } return cols; }
+
+// ---- Ported from the Python Connect4Game advanced AI (evaluate_window / score_position / minimax) ----
+function c4EvaluateWindow(window, piece){
+  let score = 0;
+  const opp = piece === 2 ? 1 : 2;
+  const count = v => window.filter(x => x === v).length;
+  const pieceCount = count(piece), emptyCount = count(0), oppCount = count(opp);
+  if(pieceCount === 4) score += 10000;
+  else if(pieceCount === 3 && emptyCount === 1) score += 100;
+  else if(pieceCount === 2 && emptyCount === 2) score += 10;
+  if(oppCount === 3 && emptyCount === 1) score -= 80;
+  return score;
+}
+function c4ScorePosition(board, piece){
+  let score = 0;
+  const centerCol = Math.floor(C4_COLS/2);
+  let centerCount = 0;
+  for(let r=0;r<C4_ROWS;r++) if(board[r][centerCol] === piece) centerCount++;
+  score += centerCount * 6;
+  // horizontal
+  for(let r=0;r<C4_ROWS;r++) for(let c=0;c<=C4_COLS-4;c++){
+    score += c4EvaluateWindow([board[r][c],board[r][c+1],board[r][c+2],board[r][c+3]], piece);
+  }
+  // vertical
+  for(let c=0;c<C4_COLS;c++) for(let r=0;r<=C4_ROWS-4;r++){
+    score += c4EvaluateWindow([board[r][c],board[r+1][c],board[r+2][c],board[r+3][c]], piece);
+  }
+  // positive diagonal
+  for(let r=0;r<=C4_ROWS-4;r++) for(let c=0;c<=C4_COLS-4;c++){
+    score += c4EvaluateWindow([board[r][c],board[r+1][c+1],board[r+2][c+2],board[r+3][c+3]], piece);
+  }
+  // negative diagonal
+  for(let r=3;r<C4_ROWS;r++) for(let c=0;c<=C4_COLS-4;c++){
+    score += c4EvaluateWindow([board[r][c],board[r-1][c+1],board[r-2][c+2],board[r-3][c+3]], piece);
+  }
+  return score;
+}
+function c4Minimax(board, depth, alpha, beta, maximizing){
+  const validLocations = c4ValidCols(board).sort((a,b) => Math.abs(a-3) - Math.abs(b-3));
+  const isTerminal = c4CheckWin(board,1) || c4CheckWin(board,2) || validLocations.length === 0;
+  if(depth === 0 || isTerminal){
+    if(isTerminal){
+      if(c4CheckWin(board,2)) return [null, 100000000 + depth];
+      if(c4CheckWin(board,1)) return [null, -100000000 - depth];
+      return [null, 0];
+    }
+    return [null, c4ScorePosition(board, 2)];
+  }
+  if(maximizing){
+    let value = -Infinity;
+    let column = validLocations[0];
+    for(const col of validLocations){
+      const row = c4DropRow(board, col);
+      board[row][col] = 2;
+      const [, newScore] = c4Minimax(board, depth-1, alpha, beta, false);
+      board[row][col] = 0;
+      if(newScore > value){ value = newScore; column = col; }
+      alpha = Math.max(alpha, value);
+      if(alpha >= beta) break;
+    }
+    return [column, value];
+  } else {
+    let value = Infinity;
+    let column = validLocations[0];
+    for(const col of validLocations){
+      const row = c4DropRow(board, col);
+      board[row][col] = 1;
+      const [, newScore] = c4Minimax(board, depth-1, alpha, beta, true);
+      board[row][col] = 0;
+      if(newScore < value){ value = newScore; column = col; }
+      beta = Math.min(beta, value);
+      if(alpha >= beta) break;
+    }
+    return [column, value];
+  }
+}
+function c4AiMove(board, difficulty){
+  const valid = c4ValidCols(board);
+  if(!valid.length) return null;
+  if(difficulty === 'Easy'){
+    // Mostly random, but takes an immediate winning move if available
+    for(const c of valid){ const r = c4DropRow(board,c); board[r][c]=2; const win = c4CheckWin(board,2); board[r][c]=0; if(win) return c; }
+    return valid[Math.floor(Math.random()*valid.length)];
+  }
+  const depth = difficulty === 'Hard' ? 5 : 3;
+  const [col] = c4Minimax(board, depth, -Infinity, Infinity, true);
+  return col !== null && col !== undefined ? col : valid[Math.floor(Math.random()*valid.length)];
+}
+
+function renderC4(){
+  if(!c4State) return;
+  const s = c4State;
+  let qHtml = '';
+  if(s.mode === 'study' && !s.winner && !s.full && s.pendingCol === undefined === false){}
+  let boardHtml = '<div class="c4-board">';
+  for(let r=0;r<C4_ROWS;r++) for(let c=0;c<C4_COLS;c++){
+    const v = s.board[r][c];
+    boardHtml += `<div class="c4-cell ${v===1?'p1':v===2?'p2':''}" data-col="${c}"></div>`;
+  }
+  boardHtml += '</div>';
+  let statusHtml = '';
+  if(s.winner){
+    statusHtml = `<div class="c4-status">${s.winner==='draw' ? "It's a draw!" : `<strong>${s.mode==='ai' && s.winner===2 ? 'AI' : 'Player '+s.winner}</strong> wins! 🎉`}</div>`;
+  } else if(s.mode === 'study' && s.activeQuestion){
+    const q = s.activeQuestion;
+    qHtml = `<div class="c4-question"><div class="qtitle">Question (Player ${s.turn}): ${escapeHtml(q.question)}</div>` +
+      q.options.map((o,oi) => `<button class="btn ghost small c4-opt" data-oi="${oi}" style="margin:4px;">${escapeHtml(o)}</button>`).join('') +
+      `</div>`;
+  } else {
+    statusHtml = `<div class="c4-status">Turn: <strong>${s.mode==='ai' && s.turn===2 ? 'AI is thinking…' : 'Player '+s.turn}</strong>${s.mode==='study' ? ' — pick a column to answer a question' : ''}</div>`;
+  }
+  el('c4Out').innerHTML = qHtml + `<div class="c4-board-wrap">${boardHtml}</div>` + statusHtml;
+  if(!s.winner){
+    if(qHtml){
+      document.querySelectorAll('.c4-opt').forEach(b => b.addEventListener('click', () => c4AnswerQuestion(parseInt(b.dataset.oi,10))));
+    } else if(!(s.mode === 'ai' && s.turn === 2)){
+      document.querySelectorAll('.c4-cell').forEach(cell => cell.addEventListener('click', () => c4TryColumn(parseInt(cell.dataset.col,10))));
+    }
+  } else {
+    el('c4Out').insertAdjacentHTML('beforeend', `<div style="text-align:center;margin-top:14px;"><button class="btn small" id="c4Again">New game</button></div>`);
+    el('c4Again').addEventListener('click', () => el('startC4').click());
+  }
+}
+function c4TryColumn(col){
+  const s = c4State;
+  if(s.mode === 'study'){
+    if(!s.questionPool.length) s.questionPool = shuffle(state.quiz);
+    s.activeQuestion = s.questionPool[s.qIdx % s.questionPool.length];
+    s.qIdx++;
+    s.pendingCol = col;
+    renderC4();
+    return;
+  }
+  c4PlacePiece(col);
+}
+function c4AnswerQuestion(oi){
+  const s = c4State;
+  const correct = oi === s.activeQuestion.correctIndex;
+  s.activeQuestion = null;
+  if(correct){
+    awardXp(15);
+    c4PlacePiece(s.pendingCol);
+  } else {
+    awardXp(2);
+    s.turn = s.turn === 1 ? 2 : 1;
+    saveState();
+    renderC4();
+  }
+}
+function c4PlacePiece(col){
+  const s = c4State;
+  const r = c4DropRow(s.board, col);
+  if(r === -1) return;
+  s.board[r][col] = s.turn;
+  if(c4CheckWin(s.board, s.turn)){
+    s.winner = s.turn;
+    if(s.turn === 1 || s.mode === 'pvp'){
+      state.game.connect4Wins = (state.game.connect4Wins||0) + 1;
+      awardXp(50);
+    }
+    state.game.gamesPlayed.connect4 = (state.game.gamesPlayed.connect4||0) + 1;
+    checkAchievements();
+    saveState();
+    renderC4();
+    return;
+  }
+  if(c4ValidCols(s.board).length === 0){
+    s.winner = 'draw';
+    state.game.gamesPlayed.connect4 = (state.game.gamesPlayed.connect4||0) + 1;
+    saveState();
+    renderC4();
+    return;
+  }
+  s.turn = s.turn === 1 ? 2 : 1;
+  renderC4();
+  if(s.mode === 'ai' && s.turn === 2 && !s.winner){
+    setTimeout(() => {
+      const col2 = c4AiMove(s.board, s.difficulty || 'Medium');
+      if(col2 !== null && col2 !== undefined) c4PlacePiece(col2);
+    }, 500);
+  }
+}
+
+// ---------- Pomodoro / Focus timer ----------
+const POM_DURATIONS = { focus: 25*60, short: 5*60, long: 15*60 };
+const POM_LABELS = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+let pom = { mode:'focus', secondsLeft: POM_DURATIONS.focus, running:false, timer:null };
+
+function pomToday(){ return new Date().toDateString(); }
+function pomFormat(s){ const m = Math.floor(s/60), sec = s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
+function pomRenderSessions(){
+  if(state.game.focusDate !== pomToday()){ state.game.focusMinutesToday = 0; state.game.focusDate = pomToday(); }
+  el('pomSessions').textContent = `${state.game.focusSessions||0} focus sessions · ${state.game.focusMinutesToday||0} min today`;
+}
+function pomSetMode(mode){
+  pom.mode = mode;
+  pom.secondsLeft = POM_DURATIONS[mode];
+  pom.running = false;
+  clearInterval(pom.timer);
+  document.querySelectorAll('#pomModeRow button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  el('pomTime').textContent = pomFormat(pom.secondsLeft);
+  el('pomStart').textContent = 'Start';
+  el('pomodoroMini').classList.remove('running');
+  el('pomodoroMini').textContent = mode === 'focus' ? '⏱️' : '☕';
+}
+function pomTick(){
+  pom.secondsLeft--;
+  el('pomTime').textContent = pomFormat(pom.secondsLeft);
+  if(pom.secondsLeft <= 0){
+    clearInterval(pom.timer);
+    pom.running = false;
+    el('pomStart').textContent = 'Start';
+    el('pomodoroMini').classList.remove('running');
+    if(pom.mode === 'focus'){
+      state.game.focusSessions = (state.game.focusSessions||0) + 1;
+      if(state.game.focusDate !== pomToday()){ state.game.focusMinutesToday = 0; state.game.focusDate = pomToday(); }
+      state.game.focusMinutesToday = (state.game.focusMinutesToday||0) + 25;
+      awardXp(20);
+      checkAchievements();
+      showToast('✅', 'Focus session complete! +20 XP — take a break.', 4500);
+      pomRenderSessions();
+      saveState();
+      pomSetMode('short');
+    } else {
+      showToast('🔔', 'Break\'s over — ready for another focus session?', 4000);
+      pomSetMode('focus');
+    }
+  }
+}
+function pomToggleStart(){
+  if(pom.running){
+    pom.running = false;
+    clearInterval(pom.timer);
+    el('pomStart').textContent = 'Start';
+    el('pomodoroMini').classList.remove('running');
+  } else {
+    pom.running = true;
+    el('pomStart').textContent = 'Pause';
+    el('pomodoroMini').classList.add('running');
+    if(el('pomodoro').classList.contains('collapsed')) el('pomodoroMini').textContent = pom.mode === 'focus' ? '⏱️' : '☕';
+    pom.timer = setInterval(pomTick, 1000);
+  }
+}
+document.querySelectorAll('#pomModeRow button').forEach(b => b.addEventListener('click', () => pomSetMode(b.dataset.mode)));
+el('pomStart').addEventListener('click', pomToggleStart);
+el('pomReset').addEventListener('click', () => pomSetMode(pom.mode));
+el('pomCollapseBtn').addEventListener('click', e => { e.stopPropagation(); el('pomodoro').classList.add('collapsed'); });
+el('pomodoroMini').addEventListener('click', () => el('pomodoro').classList.remove('collapsed'));
+
+// ---------- Init ----------
+function init(){
+  loadState();
+  el('apiKey').value = state.apiKey || '';
+  el('modelName').value = state.model || 'gemini-2.5-flash';
+  el('rememberKey').checked = !!state.remember;
+  el('materialText').value = state.materialText || '';
+  renderSources();
+  updateCharCount();
+  if(state.notesHtml) el('notesOut').innerHTML = `<div class="notes-body">${state.notesHtml}</div>`;
+  if(state.cards && state.cards.length){
+    if(!state.cardOrder || !state.cardOrder.length) state.cardOrder = state.cards.map((_,i) => i);
+    if(!state.cardMastered) state.cardMastered = [];
+    renderCards();
+  }
+  if(state.quiz && state.quiz.length) renderQuiz();
+  if(state.explainHistory && state.explainHistory.length) renderExplain();
+  renderArcade();
+  pomRenderSessions();
+  pomSetMode('focus');
+}
+init();
+</script>
+</body>
+</html>
