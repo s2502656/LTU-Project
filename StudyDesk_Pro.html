@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Desk Pro — AI Study Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --bg:#16201c;--bg-soft:#1d2a25;--bg-card:#243028;--bg-hover:#2a3830;
+  --paper:#f7f3e8;--paper-line:#e3dcc8;
+  --ink:#ece8dc;--ink-dim:#8fa390;--ink-faint:#4a5e52;
+  --amber:#e3a53d;--amber-soft:#f0c97a;--amber-pale:rgba(227,165,61,0.12);
+  --sage:#7fa873;--sage-soft:#a8d69f;
+  --brick:#c1604a;--brick-soft:#e8927c;
+  --blue:#5b9bd5;--blue-soft:#90c0f0;
+  --purple:#9b7fc4;
+  --rule:rgba(236,232,220,0.1);--rule-strong:rgba(236,232,220,0.2);
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+  --glow-amber:0 0 20px rgba(227,165,61,0.25);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;line-height:1.6;
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* ======= ANIMATIONS ======= */
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:none;}}
+@keyframes pop{0%{transform:scale(0.8);opacity:0;}70%{transform:scale(1.08);}100%{transform:scale(1);opacity:1;}}
+@keyframes dropIn{from{transform:translateY(-40px);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes glow{0%,100%{box-shadow:0 0 12px rgba(227,165,61,0.3);}50%{box-shadow:0 0 28px rgba(227,165,61,0.7);}}
+@keyframes shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-6px);}40%,80%{transform:translateX(6px);}}
+@keyframes pulseXp{0%{opacity:1;transform:translateY(0)scale(1);}100%{opacity:0;transform:translateY(-40px)scale(1.5);}}
+@keyframes bounceIn{0%{transform:scale(0);}60%{transform:scale(1.15);}80%{transform:scale(0.95);}100%{transform:scale(1);}}
+@keyframes chessMove{from{transform:scale(1.3);background:rgba(227,165,61,0.3);}to{transform:scale(1);background:transparent;}}
+@keyframes winnerGlow{0%,100%{text-shadow:0 0 10px var(--amber);}50%{text-shadow:0 0 30px var(--amber),0 0 60px var(--amber-soft);}}
+@keyframes particleFly{0%{opacity:1;transform:translate(0,0) scale(1);}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0);}}
+@keyframes rotateIn{from{opacity:0;transform:rotateY(-90deg);}to{opacity:1;transform:rotateY(0);}}
+
+.anim-fadein{animation:fadeIn .35s ease both;}
+.anim-pop{animation:pop .3s cubic-bezier(.4,.2,.2,1.3) both;}
+.anim-slidein{animation:slideDown .3s ease both;}
+.anim-shake{animation:shake .4s ease;}
+
+/* ======= LAYOUT ======= */
+.app-shell{display:flex;min-height:100vh;}
+
+/* ======= SIDEBAR ======= */
+.sidebar{
+  width:68px;background:var(--bg-soft);border-right:1px solid var(--rule);
+  display:flex;flex-direction:column;align-items:center;padding:16px 0;
+  position:fixed;top:0;left:0;bottom:0;z-index:200;
+  transition:width .2s ease;
+}
+.sidebar:hover{width:200px;}
+.sidebar-logo{
+  font-family:'Fraunces',serif;font-weight:700;font-size:1.4rem;
+  color:var(--amber-soft);margin-bottom:24px;padding:0 16px;
+  white-space:nowrap;overflow:hidden;width:100%;text-align:center;
+}
+.sidebar-logo .short{display:block;}
+.sidebar-logo .long{display:none;}
+.sidebar:hover .sidebar-logo .short{display:none;}
+.sidebar:hover .sidebar-logo .long{display:block;font-size:1.1rem;}
+.nav-item{
+  width:100%;padding:12px 16px;display:flex;align-items:center;gap:12px;
+  cursor:pointer;border:none;background:none;color:var(--ink-dim);
+  font-family:'Inter',sans-serif;font-size:0.88rem;font-weight:500;
+  transition:all .15s;white-space:nowrap;overflow:hidden;
+  position:relative;
+}
+.nav-item:hover{background:var(--amber-pale);color:var(--amber-soft);}
+.nav-item.active{color:var(--amber-soft);background:var(--amber-pale);}
+.nav-item.active::before{
+  content:"";position:absolute;left:0;top:25%;bottom:25%;width:3px;
+  background:var(--amber);border-radius:0 3px 3px 0;
+}
+.nav-item .nav-icon{font-size:1.2rem;min-width:24px;text-align:center;flex-shrink:0;}
+.nav-item .nav-label{opacity:0;transition:opacity .15s .05s;font-size:0.85rem;}
+.sidebar:hover .nav-item .nav-label{opacity:1;}
+.nav-divider{width:calc(100% - 24px);height:1px;background:var(--rule);margin:8px 12px;}
+.xp-mini{
+  margin-top:auto;padding:12px;width:100%;
+}
+.xp-mini-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-top:4px;}
+.xp-mini-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-soft));transition:width .5s ease;}
+.xp-mini-label{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--ink-dim);text-align:center;opacity:0;transition:opacity .15s;}
+.sidebar:hover .xp-mini-label{opacity:1;}
+
+/* ======= MAIN CONTENT ======= */
+.main{margin-left:68px;min-height:100vh;display:flex;flex-direction:column;}
+.page{display:none;flex-direction:column;flex:1;animation:fadeIn .3s ease both;}
+.page.active{display:flex;}
+
+/* ======= TOP BAR ======= */
+.topbar{
+  background:rgba(22,32,28,0.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--rule);padding:14px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;gap:16px;
+}
+.topbar-title{font-family:'Fraunces',serif;font-size:1.25rem;font-weight:600;}
+.topbar-title .dot{color:var(--amber);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.streak-badge{
+  display:flex;align-items:center;gap:6px;padding:6px 12px;
+  background:var(--amber-pale);border:1px solid rgba(227,165,61,0.3);
+  border-radius:999px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;
+}
+.level-badge{
+  background:linear-gradient(135deg,var(--amber),var(--amber-soft));
+  color:#1a1000;padding:5px 12px;border-radius:999px;
+  font-weight:700;font-size:0.8rem;font-family:'JetBrains Mono',monospace;
+}
+.settings-btn{
+  background:var(--bg-card);border:1px solid var(--rule);color:var(--ink-dim);
+  padding:8px 14px;border-radius:999px;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;
+  transition:all .15s;
+}
+.settings-btn:hover{border-color:var(--amber);color:var(--amber-soft);}
+
+/* ======= CONTENT WRAP ======= */
+.content{padding:28px;max-width:1080px;width:100%;}
+.content.wide{max-width:1200px;}
+
+/* ======= SETTINGS DRAWER ======= */
+.settings-drawer{
+  display:none;background:var(--bg-soft);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:20px 22px;margin:0 28px 0;
+  animation:slideDown .25s ease;
+}
+.settings-drawer.open{display:block;}
+.settings-drawer h3{margin:0 0 14px;font-family:'Fraunces',serif;font-size:1.05rem;color:var(--amber-soft);}
+.field-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.field{flex:1;min-width:220px;}
+.field label{display:block;font-size:0.75rem;color:var(--ink-dim);margin-bottom:5px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em;}
+.field input[type=text],.field input[type=password]{
+  width:100%;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);
+  padding:10px 12px;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:0.85rem;
+  transition:border-color .15s;
+}
+.field input:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent;}
+.checkrow{display:flex;align-items:center;gap:8px;font-size:0.83rem;color:var(--ink-dim);}
+.hint-text{font-size:0.76rem;color:var(--ink-dim);margin-top:8px;line-height:1.6;}
+.hint-text a{color:var(--amber-soft);}
+
+/* ======= MATERIALS PANEL ======= */
+.materials-panel{
+  background:var(--bg-soft);border:1px solid var(--rule);border-radius:var(--radius);
+  padding:22px;margin-bottom:0;
+}
+.materials-panel h2{margin:0 0 4px;font-family:'Fraunces',serif;font-size:1.15rem;}
+.sub{color:var(--ink-dim);font-size:0.84rem;margin:0 0 14px;}
+.material-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){.material-grid{grid-template-columns:1fr;}}
+textarea#materialText{
+  width:100%;min-height:130px;resize:vertical;background:rgba(0,0,0,0.2);
+  border:1px solid var(--rule);color:var(--ink);border-radius:var(--radius-sm);
+  padding:12px;font-family:'Inter',sans-serif;font-size:0.91rem;
+  transition:border-color .15s;
+}
+textarea#materialText:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent;}
+.dropzone{
+  border:1.5px dashed var(--rule);border-radius:var(--radius-sm);
+  padding:24px 16px;text-align:center;color:var(--ink-dim);font-size:0.84rem;
+  cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;
+  min-height:130px;justify-content:center;
+}
+.dropzone:hover,.dropzone.drag{border-color:var(--amber);color:var(--amber-soft);background:var(--amber-pale);}
+.dropzone .drop-icon{font-size:2rem;}
+.dropzone input{display:none;}
+.source-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.source-list li{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(0,0,0,0.18);border:1px solid var(--rule);border-radius:6px;
+  padding:7px 11px;font-size:0.82rem;
+}
+.source-list li span.name{font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.source-list li button{background:none;border:none;color:var(--brick-soft);cursor:pointer;font-size:1rem;}
+.mat-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:0.75rem;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
+.mat-footer button{background:transparent;border:1px solid var(--rule);color:var(--ink-dim);padding:4px 10px;border-radius:999px;cursor:pointer;font-size:0.72rem;transition:all .15s;}
+.mat-footer button:hover{border-color:var(--brick-soft);color:var(--brick-soft);}
+
+/* ======= BUTTONS ======= */
+.btn{
+  background:var(--amber);color:#1a1000;border:none;padding:10px 20px;border-radius:999px;
+  font-weight:700;font-size:0.86rem;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:all .15s ease;letter-spacing:0.01em;
+}
+.btn:hover{box-shadow:0 0 0 3px rgba(227,165,61,0.3),var(--shadow);transform:translateY(-1px);}
+.btn:active{transform:scale(0.97);}
+.btn:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;transform:none;}
+.btn.ghost{background:transparent;border:1px solid var(--rule);color:var(--ink-dim);}
+.btn.ghost:hover{border-color:var(--amber);color:var(--amber-soft);}
+.btn.sm{padding:7px 14px;font-size:0.78rem;}
+.btn.danger{background:var(--brick);color:#fff;}
+.btn.success{background:var(--sage);color:#0a2010;}
+
+/* ======= CARDS/PANELS ======= */
+.card{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:20px;}
+.panel-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.panel-header h2{margin:0;font-family:'Fraunces',serif;font-size:1.35rem;}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.controls select{
+  background:rgba(0,0,0,0.22);border:1px solid var(--rule);color:var(--ink);
+  padding:8px 10px;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+  cursor:pointer;
+}
+.empty-state{
+  color:var(--ink-dim);font-size:0.9rem;padding:40px 20px;text-align:center;
+  border:1.5px dashed var(--rule);border-radius:var(--radius);
+}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:10px;}
+.error-box{background:rgba(193,96,74,0.15);border:1px solid var(--brick);color:#f3cfc4;padding:10px 14px;border-radius:var(--radius-sm);font-size:0.85rem;margin-bottom:14px;}
+.success-box{background:rgba(127,168,115,0.15);border:1px solid var(--sage);color:#c4f3c4;padding:10px 14px;border-radius:var(--radius-sm);font-size:0.85rem;margin-bottom:14px;}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,0.18);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:7px;}
+.loading-row{color:var(--ink-dim);font-size:0.87rem;padding:16px 0;display:flex;align-items:center;}
+
+/* ======= HOME PAGE ======= */
+.home-hero{
+  background:linear-gradient(135deg,var(--bg-soft) 0%,rgba(31,44,40,0.8) 100%);
+  border:1px solid var(--rule);border-radius:var(--radius);
+  padding:36px 32px;margin-bottom:24px;position:relative;overflow:hidden;
+}
+.home-hero::before{
+  content:"";position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+  background:radial-gradient(circle,rgba(227,165,61,0.15) 0%,transparent 70%);
+  border-radius:50%;
+}
+.home-hero h1{font-family:'Fraunces',serif;font-size:2rem;margin:0 0 8px;font-weight:700;}
+.home-hero h1 .dot{color:var(--amber);}
+.home-hero p{color:var(--ink-dim);margin:0 0 20px;font-size:0.95rem;max-width:540px;}
+.quick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;}
+.stat-chip{
+  background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);
+  padding:16px;text-align:center;transition:all .2s;
+}
+.stat-chip:hover{border-color:var(--amber-soft);transform:translateY(-2px);}
+.stat-chip .val{font-family:'Fraunces',serif;font-size:1.6rem;color:var(--amber-soft);display:block;}
+.stat-chip .lbl{font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.05em;}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+.tool-card{
+  background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);
+  padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.tool-card:hover{border-color:var(--amber);transform:translateY(-3px);box-shadow:var(--shadow);}
+.tool-card:active{transform:translateY(-1px);}
+.tool-card::after{
+  content:"";position:absolute;inset:0;opacity:0;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(227,165,61,0.08),transparent 60%);
+  transition:opacity .3s;pointer-events:none;
+}
+.tool-card:hover::after{opacity:1;}
+.tool-icon{font-size:2rem;margin-bottom:10px;display:block;}
+.tool-card h3{margin:0 0 5px;font-family:'Fraunces',serif;font-size:1.05rem;}
+.tool-card p{margin:0;color:var(--ink-dim);font-size:0.81rem;line-height:1.5;}
+.tool-card .arrow{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--amber);opacity:0;transition:opacity .2s,right .2s;}
+.tool-card:hover .arrow{opacity:1;right:12px;}
+
+/* ======= XP BAR ======= */
+.xp-section{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px;}
+.xp-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.xp-level{font-family:'Fraunces',serif;font-size:1rem;color:var(--amber-soft);}
+.xp-num{font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--ink-dim);}
+.xp-bar{height:10px;background:rgba(255,255,255,0.07);border-radius:6px;overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-soft));transition:width .5s cubic-bezier(.4,.2,.2,1);}
+.xp-toast{
+  position:fixed;bottom:30px;right:30px;background:var(--amber);color:#1a1000;
+  padding:10px 18px;border-radius:999px;font-weight:700;font-size:0.9rem;
+  animation:pulseXp 1.2s ease forwards;z-index:9999;pointer-events:none;
+}
+
+/* ======= BADGES ======= */
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px;}
+.badge{
+  border:1px solid var(--rule);border-radius:var(--radius);padding:12px 14px;
+  display:flex;align-items:center;gap:10px;background:var(--bg-card);opacity:0.35;
+  transition:all .2s;
+}
+.badge.unlocked{opacity:1;border-color:var(--amber);background:var(--amber-pale);animation:pop .4s ease;}
+.badge .b-emoji{font-size:1.5rem;}
+.badge .b-name{font-size:0.8rem;font-weight:600;}
+.badge .b-desc{font-size:0.68rem;color:var(--ink-dim);}
+
+/* ======= NOTES ======= */
+.notes-body{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:28px 30px;font-size:0.95rem;line-height:1.7;}
+.notes-body h1{font-family:'Fraunces',serif;color:#1f2c28;font-size:1.45rem;border-bottom:3px solid var(--amber);padding-bottom:8px;margin-top:0;}
+.notes-body h2{font-family:'Fraunces',serif;color:#1f2c28;font-size:1.2rem;margin-top:24px;}
+.notes-body h3{font-family:'Fraunces',serif;color:#1f2c28;font-size:1.05rem;}
+.notes-body ul{padding-left:22px;}
+.notes-body li{margin-bottom:4px;}
+.notes-body code{background:#e8e1cc;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.83em;}
+.notes-body strong{color:#5b3e12;}
+.notes-body blockquote{border-left:3px solid var(--amber);margin:16px 0;padding:8px 16px;background:#f0ead4;border-radius:0 6px 6px 0;}
+.notes-toolbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+
+/* ======= FLASHCARDS ======= */
+.deck-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 0;}
+.progress-bar{width:100%;max-width:520px;height:6px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;}
+.progress-bar .fill{height:100%;background:var(--amber);transition:width .3s ease;}
+.card-stage{width:100%;max-width:520px;height:290px;perspective:1600px;}
+.card-inner{
+  position:relative;width:100%;height:100%;
+  transition:transform .55s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;cursor:pointer;
+}
+.card-inner.flipped{transform:rotateY(180deg);}
+.card-face{
+  position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;
+  box-shadow:0 12px 36px rgba(0,0,0,0.4),0 0 0 1px rgba(0,0,0,0.06)inset;
+  font-family:'Fraunces',serif;font-size:1.2rem;line-height:1.5;
+}
+.card-face.front{background:var(--paper);color:#2a2620;}
+.card-face.back{background:#fffaf0;color:#2a2620;transform:rotateY(180deg);}
+.card-face .tag{position:absolute;top:12px;right:14px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#9c8c63;letter-spacing:.06em;text-transform:uppercase;}
+.card-face .hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#b0a070;}
+.deck-controls{display:flex;align-items:center;gap:16px;}
+.icon-btn{
+  background:rgba(255,255,255,0.06);border:1px solid var(--rule);color:var(--ink);
+  width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:1.1rem;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{border-color:var(--amber);background:var(--amber-pale);}
+.count-badge{font-family:'JetBrains Mono',monospace;color:var(--ink-dim);font-size:0.83rem;min-width:72px;text-align:center;}
+.rate-row{display:flex;gap:12px;}
+.rate-btn{font-size:0.83rem;padding:8px 16px;border-radius:999px;border:1px solid var(--rule);background:transparent;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;}
+.rate-btn.got{color:var(--sage-soft);}
+.rate-btn.got:hover{border-color:var(--sage);background:rgba(127,168,115,0.1);}
+.rate-btn.again{color:var(--amber-soft);}
+.rate-btn.again:hover{border-color:var(--amber);background:var(--amber-pale);}
+.deck-stats-row{font-family:'JetBrains Mono',monospace;font-size:0.76rem;color:var(--ink-dim);}
+
+/* ======= QUIZ ======= */
+.quiz-q{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:20px;margin-bottom:14px;animation:fadeIn .3s ease both;}
+.quiz-q .qtitle{font-weight:600;margin-bottom:14px;font-size:0.97rem;line-height:1.5;}
+.qnum{font-family:'JetBrains Mono',monospace;color:var(--amber-soft);margin-right:8px;}
+.opt{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);
+  margin-bottom:7px;border:1px solid transparent;cursor:pointer;font-size:0.89rem;
+  transition:all .15s;
+}
+.opt:hover{background:rgba(255,255,255,0.04);border-color:var(--rule-strong);}
+.opt input{accent-color:var(--amber);width:16px;height:16px;}
+.opt.correct{border-color:var(--sage)!important;background:rgba(127,168,115,0.12)!important;}
+.opt.incorrect{border-color:var(--brick)!important;background:rgba(193,96,74,0.12)!important;}
+.qexplain{margin-top:12px;font-size:0.83rem;color:var(--ink-dim);border-top:1px dashed var(--rule);padding-top:10px;display:none;}
+.qexplain.show{display:block;animation:fadeIn .2s ease;}
+.score-banner{
+  background:var(--bg-card);border:1px solid var(--amber);border-radius:var(--radius);
+  padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  animation:pop .4s ease;
+}
+.score-banner .big{font-family:'Fraunces',serif;font-size:1.8rem;color:var(--amber-soft);}
+
+/* ======= EXPLAIN ======= */
+.explain-input-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.explain-input-row input[type=text]{
+  flex:1;min-width:220px;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);
+  padding:11px 16px;border-radius:999px;font-size:0.91rem;transition:border-color .15s;
+}
+.explain-input-row input:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent;}
+.explain-card{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:24px 26px;margin-bottom:14px;animation:fadeIn .3s ease;}
+.explain-card h3{margin:0 0 12px;font-family:'Fraunces',serif;color:#1f2c28;font-size:1.12rem;}
+.explain-card .body h1,.explain-card .body h2,.explain-card .body h3{font-family:'Fraunces',serif;color:#1f2c28;}
+.explain-card code{background:#e8e1cc;padding:2px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.82em;}
+
+/* ======= STUDY TOOLS PAGE ======= */
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+.tool-widget{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:20px;}
+.tool-widget h3{margin:0 0 12px;font-family:'Fraunces',serif;font-size:1.05rem;color:var(--amber-soft);}
+/* Pomodoro */
+.pomodoro-display{text-align:center;padding:16px 0;}
+.pomodoro-time{font-family:'Fraunces',serif;font-size:4rem;letter-spacing:-.02em;color:var(--amber-soft);line-height:1;}
+.pomodoro-label{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--ink-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+.pomodoro-btns{display:flex;gap:8px;justify-content:center;margin-top:16px;}
+.pomodoro-ring{width:120px;height:120px;position:relative;margin:0 auto 8px;}
+.pomodoro-ring svg{transform:rotate(-90deg);}
+.pomodoro-ring .time-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:1.4rem;color:var(--amber-soft);}
+/* Mindmap */
+.mindmap-wrap{background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);min-height:200px;overflow:auto;position:relative;}
+.mindmap-wrap canvas{display:block;}
+/* Vocab list */
+.vocab-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+.vocab-item{display:flex;gap:10px;padding:8px 10px;background:rgba(0,0,0,0.15);border-radius:var(--radius-sm);font-size:0.84rem;}
+.vocab-term{font-weight:600;color:var(--amber-soft);min-width:100px;}
+.vocab-def{color:var(--ink-dim);}
+/* Formula sheet */
+.formula-list{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;}
+.formula-item{background:var(--paper);color:#2a2620;border-radius:var(--radius-sm);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:0.85rem;}
+/* Timeline */
+.timeline{position:relative;padding-left:20px;}
+.timeline::before{content:"";position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--rule);}
+.timeline-item{position:relative;margin-bottom:16px;}
+.timeline-item::before{content:"";position:absolute;left:-17px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--amber);border:2px solid var(--bg-card);}
+.timeline-date{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--amber-soft);}
+.timeline-text{font-size:0.85rem;color:var(--ink-dim);}
+
+/* ======= GAMES ======= */
+.game-subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px;}
+.game-subnav button{
+  background:var(--bg-card);border:1px solid var(--rule);color:var(--ink-dim);
+  padding:9px 16px;border-radius:999px;font-weight:600;font-size:0.84rem;cursor:pointer;
+  transition:all .15s;
+}
+.game-subnav button.active{border-color:var(--amber);color:var(--amber-soft);background:var(--amber-pale);}
+.game-panel{display:none;}
+.game-panel.active{display:block;animation:fadeIn .25s ease;}
+
+/* Typing */
+.typing-stage{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:32px 28px;text-align:center;}
+.typing-word{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:600;margin-bottom:20px;min-height:2.8rem;letter-spacing:.01em;}
+.typing-word .ok{color:var(--sage);}
+.typing-word .bad{color:var(--brick);}
+.typing-input{
+  width:100%;max-width:420px;margin:0 auto;display:block;padding:12px 18px;
+  border-radius:999px;border:2.5px solid #d8cfae;font-family:'JetBrains Mono',monospace;
+  font-size:1rem;text-align:center;background:#fffaf0;transition:border-color .15s;
+}
+.typing-input:focus{outline:none;border-color:var(--amber);}
+.typing-hud{display:flex;justify-content:center;gap:28px;margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#5b3e12;}
+.typing-hud .n{font-family:'Fraunces',serif;font-size:1.4rem;display:block;color:#1f2c28;}
+.typing-result .big{font-family:'Fraunces',serif;font-size:2.6rem;color:var(--amber-soft);}
+
+/* Emoji */
+.emoji-stage{background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:40px 28px;text-align:center;}
+.emoji-display{font-size:3.6rem;margin-bottom:20px;letter-spacing:.1em;animation:bounceIn .4s ease;}
+.emoji-diff-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.7rem;padding:3px 10px;border-radius:999px;margin-bottom:16px;letter-spacing:.04em;text-transform:uppercase;}
+.emoji-diff-tag.easy{background:rgba(127,168,115,0.18);color:#3c6b32;}
+.emoji-diff-tag.medium{background:rgba(227,165,61,0.2);color:#7a5512;}
+.emoji-diff-tag.hard{background:rgba(193,96,74,0.18);color:#8a3a28;}
+.emoji-input{width:100%;max-width:380px;margin:0 auto;display:block;padding:11px 16px;border-radius:999px;border:2px solid #d8cfae;font-size:1rem;text-align:center;background:#fffaf0;transition:border-color .15s;}
+.emoji-input:focus{outline:none;border-color:var(--amber);}
+.emoji-reveal{margin-top:16px;font-family:'Fraunces',serif;font-size:1.2rem;}
+.emoji-reveal.correct{color:var(--sage);animation:bounceIn .3s ease;}
+.emoji-reveal.wrong{color:var(--brick);animation:shake .35s ease;}
+
+/* Connect 4 */
+.c4-board{
+  display:inline-grid;grid-template-columns:repeat(7,1fr);gap:7px;
+  background:#111a16;padding:12px;border-radius:14px;margin:0 auto;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+.c4-cell{
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(255,255,255,0.04);cursor:pointer;
+  transition:background .2s,transform .15s;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.c4-cell:hover:not(.p1):not(.p2){background:rgba(255,255,255,0.12);}
+.c4-cell.p1{background:radial-gradient(circle at 35% 35%,var(--amber-soft),var(--amber));box-shadow:0 2px 8px rgba(227,165,61,0.4);}
+.c4-cell.p2{background:radial-gradient(circle at 35% 35%,var(--brick-soft),var(--brick));box-shadow:0 2px 8px rgba(193,96,74,0.4);}
+.c4-cell.win{animation:glow 1s ease infinite;}
+.c4-cell.drop{animation:dropIn .3s cubic-bezier(.4,.2,.2,1.3) both;}
+.c4-board-wrap{text-align:center;}
+.c4-status{text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.86rem;color:var(--ink-dim);margin-top:14px;}
+.c4-status strong{color:var(--amber-soft);}
+.c4-question{background:var(--bg-card);border:1px solid var(--amber);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;animation:slideDown .25s ease;}
+.c4-question .qtitle{font-weight:600;margin-bottom:12px;line-height:1.5;}
+
+/* Chess */
+.chess-wrap{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start;}
+.chess-board-container{position:relative;}
+.chess-board{
+  display:grid;grid-template-columns:repeat(8,1fr);
+  border:3px solid #5a4a2a;border-radius:4px;overflow:hidden;
+  box-shadow:0 12px 40px rgba(0,0,0,0.6);
+}
+.chess-sq{
+  width:54px;height:54px;display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;cursor:pointer;transition:background .1s;position:relative;
+  user-select:none;
+}
+.chess-sq.light{background:#f0d9b5;}
+.chess-sq.dark{background:#b58863;}
+.chess-sq.selected{background:#f6f669!important;box-shadow:inset 0 0 0 3px rgba(0,0,0,0.3);}
+.chess-sq.possible{cursor:pointer;}
+.chess-sq.possible::after{
+  content:"";position:absolute;width:30%;height:30%;background:rgba(0,0,0,0.18);border-radius:50%;
+}
+.chess-sq.possible.has-piece::after{
+  width:100%;height:100%;background:transparent;border-radius:0;
+  box-shadow:inset 0 0 0 5px rgba(0,0,0,0.25);
+}
+.chess-sq.last-move{background:rgba(255,255,100,0.5)!important;}
+.chess-sq.check{background:rgba(255,50,50,0.6)!important;}
+.chess-sq .piece{transition:transform .15s;line-height:1;}
+.chess-sq.moved .piece{animation:chessMove .3s ease;}
+.chess-coords{position:absolute;font-family:'JetBrains Mono',monospace;font-size:0.58rem;font-weight:600;pointer-events:none;}
+.chess-coords.rank{left:2px;top:2px;color:rgba(0,0,0,0.5);}
+.chess-coords.file{right:2px;bottom:2px;color:rgba(0,0,0,0.5);}
+.chess-sidebar{min-width:200px;display:flex;flex-direction:column;gap:12px;}
+.chess-status{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:14px;}
+.chess-status .who{font-family:'Fraunces',serif;font-size:1rem;font-weight:600;}
+.chess-status .info{font-size:0.81rem;color:var(--ink-dim);margin-top:4px;}
+.move-history{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:14px;flex:1;max-height:300px;overflow-y:auto;}
+.move-history h4{margin:0 0 8px;font-family:'JetBrains Mono',monospace;font-size:0.76rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);}
+.move-pair{display:flex;gap:6px;margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;}
+.move-num{color:var(--ink-dim);min-width:24px;}
+.move-notation{padding:2px 6px;border-radius:4px;cursor:pointer;}
+.move-notation:hover{background:var(--amber-pale);color:var(--amber-soft);}
+.captured-display{background:var(--bg-card);border:1px solid var(--rule);border-radius:var(--radius);padding:12px;}
+.captured-display h4{margin:0 0 6px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);}
+.captured-pieces{font-size:1.2rem;letter-spacing:2px;min-height:24px;}
+.chess-controls{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* Promo banner */
+.promo-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;}
+.promo-card{
+  flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px;
+}
+.promo-card .ico{font-size:1.5rem;}
+.promo-card .txt h4{margin:0 0 3px;font-family:'Fraunces',serif;font-size:0.95rem;}
+.promo-card .txt p{margin:0;font-size:0.76rem;color:var(--ink-dim);}
+
+@media(max-width:720px){
+  .sidebar{width:56px;}
+  .main{margin-left:56px;}
+  .chess-sq{width:40px;height:40px;font-size:1.4rem;}
+  .content{padding:16px;}
+  .c4-cell{width:38px;height:38px;}
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<!-- ======= SIDEBAR ======= -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="short">SD</span>
+    <span class="long">Study Desk<span style="color:var(--amber)">.</span></span>
+  </div>
+  <button class="nav-item active" data-page="home">
+    <span class="nav-icon">🏠</span><span class="nav-label">Home</span>
+  </button>
+  <button class="nav-item" data-page="material">
+    <span class="nav-icon">📚</span><span class="nav-label">Material</span>
+  </button>
+  <div class="nav-divider"></div>
+  <button class="nav-item" data-page="notes">
+    <span class="nav-icon">📝</span><span class="nav-label">Notes</span>
+  </button>
+  <button class="nav-item" data-page="flashcards">
+    <span class="nav-icon">🃏</span><span class="nav-label">Flashcards</span>
+  </button>
+  <button class="nav-item" data-page="quiz">
+    <span class="nav-icon">🧠</span><span class="nav-label">Quiz</span>
+  </button>
+  <button class="nav-item" data-page="explain">
+    <span class="nav-icon">💡</span><span class="nav-label">Explain</span>
+  </button>
+  <button class="nav-item" data-page="tools">
+    <span class="nav-icon">🛠️</span><span class="nav-label">Study Tools</span>
+  </button>
+  <div class="nav-divider"></div>
+  <button class="nav-item" data-page="games">
+    <span class="nav-icon">🎮</span><span class="nav-label">Games</span>
+  </button>
+  <div class="xp-mini">
+    <div class="xp-mini-label" id="sidebarXpLabel">Lv 1</div>
+    <div class="xp-mini-bar"><div class="xp-mini-fill" id="sidebarXpFill" style="width:0%"></div></div>
+  </div>
+</nav>
+
+<!-- ======= MAIN ======= -->
+<div class="main" id="mainContent">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">Study Desk<span class="dot">.</span></div>
+    <div class="topbar-right">
+      <div class="streak-badge">🔥 <span id="topStreak">0</span> day streak</div>
+      <div class="level-badge">Lv <span id="topLevel">1</span></div>
+      <button class="settings-btn" id="settingsBtn">⚙ Settings</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS DRAWER -->
+  <div class="settings-drawer" id="settingsDrawer">
+    <h3>Gemini API Settings</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>Gemini API Key</label>
+        <input type="password" id="apiKey" placeholder="AIza...">
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <input type="text" id="modelName" placeholder="gemini-2.5-flash" value="gemini-2.5-flash">
+      </div>
+    </div>
+    <div class="checkrow"><input type="checkbox" id="rememberKey"><label for="rememberKey">Remember key in this browser (stored only on your device)</label></div>
+    <p class="hint-text">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. Your key is never sent anywhere except Google's API.</p>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <div class="page active" id="page-home">
+    <div class="content">
+      <div class="home-hero anim-fadein">
+        <h1>Study Desk<span class="dot">.</span></h1>
+        <p>Your AI-powered study companion. Generate notes, flashcards, quizzes, and more from your own material — then play to reinforce what you've learned.</p>
+        <button class="btn" onclick="goPage('material')">📚 Load Material →</button>
+      </div>
+      <div class="quick-stats" id="homeStats"></div>
+      <div class="xp-section" id="homeXp">
+        <div class="xp-top"><span class="xp-level">Level <strong id="homeLevel">1</strong></span><span class="xp-num" id="homeXpText">0 / 100 XP</span></div>
+        <div class="xp-bar"><div class="xp-fill" id="homeXpFill" style="width:0%"></div></div>
+      </div>
+      <h3 style="font-family:'Fraunces',serif;margin:0 0 14px;">Study Tools</h3>
+      <div class="tool-grid">
+        <div class="tool-card" onclick="goPage('notes')">
+          <span class="tool-icon">📝</span><h3>Smart Notes</h3>
+          <p>Auto-generated structured study notes with key terms, summaries and section headers.</p>
+          <span class="arrow">→</span>
+        </div>
+        <div class="tool-card" onclick="goPage('flashcards')">
+          <span class="tool-icon">🃏</span><h3>Flashcards</h3>
+          <p>Spaced-repetition style flashcards. Flip, rate, and track what you know.</p>
+          <span class="arrow">→</span>
+        </div>
+        <div class="tool-card" onclick="goPage('quiz')">
+          <span class="tool-icon">🧠</span><h3>AI Quiz</h3>
+          <p>Multiple-choice quizzes from your material. Mixed difficulty, score tracking.</p>
+          <span class="arrow">→</span>
+        </div>
+        <div class="tool-card" onclick="goPage('explain')">
+          <span class="tool-icon">💡</span><h3>Topic Explainer</h3>
+          <p>Ask about any concept and get a clear explanation grounded in your material.</p>
+          <span class="arrow">→</span>
+        </div>
+        <div class="tool-card" onclick="goPage('tools')">
+          <span class="tool-icon">🛠️</span><h3>Study Tools</h3>
+          <p>Pomodoro timer, vocabulary builder, formula sheet, timeline & more.</p>
+          <span class="arrow">→</span>
+        </div>
+        <div class="tool-card" onclick="goPage('games')">
+          <span class="tool-icon">🎮</span><h3>Study Games</h3>
+          <p>Speed typing, emoji guesser, Connect 4 and Chess. Earn XP while you learn.</p>
+          <span class="arrow">→</span>
+        </div>
+      </div>
+      <div class="badge-grid" style="margin-top:24px;" id="homeBadges"></div>
+    </div>
+  </div>
+
+  <!-- ===== MATERIAL ===== -->
+  <div class="page" id="page-material">
+    <div class="content">
+      <div class="panel-header"><h2>📚 Your Study Material</h2></div>
+      <div class="materials-panel card">
+        <p class="sub">Paste text and/or drop files. All study tools use this material as their source.</p>
+        <div class="material-grid">
+          <div>
+            <label style="font-size:.75rem;color:var(--ink-dim);display:block;margin-bottom:6px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em;">Paste text</label>
+            <textarea id="materialText" placeholder="Paste lecture notes, articles, textbook excerpts..."></textarea>
+          </div>
+          <div class="dropzone" id="dropzone">
+            <div class="drop-icon">📂</div>
+            <div>Drop a <strong>.txt</strong>, <strong>.pdf</strong> or <strong>.docx</strong> file here</div>
+            <div style="font-size:0.76rem;">or click to browse</div>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.docx" multiple>
+          </div>
+        </div>
+        <ul class="source-list" id="sourceList"></ul>
+        <div class="mat-footer">
+          <span id="charCount" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ink-dim);">0 characters</span>
+          <button id="clearMaterials">Clear all</button>
+        </div>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn" onclick="goPage('notes')">Generate Notes →</button>
+        <button class="btn ghost" onclick="goPage('flashcards')">Make Flashcards →</button>
+        <button class="btn ghost" onclick="goPage('quiz')">Make Quiz →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NOTES ===== -->
+  <div class="page" id="page-notes">
+    <div class="content">
+      <div class="panel-header">
+        <h2>📝 Study Notes</h2>
+        <div class="controls">
+          <select id="notesStyle">
+            <option value="standard">Standard notes</option>
+            <option value="cornell">Cornell style</option>
+            <option value="bullet">Bullet outline</option>
+            <option value="mindmap">Concept list</option>
+          </select>
+          <button class="btn" id="genNotes">Generate Notes</button>
+        </div>
+      </div>
+      <div id="notesError"></div>
+      <div id="notesOut"><div class="empty-state"><div class="empty-icon">📝</div>Add material and press Generate Notes.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== FLASHCARDS ===== -->
+  <div class="page" id="page-flashcards">
+    <div class="content">
+      <div class="panel-header">
+        <h2>🃏 Flashcards</h2>
+        <div class="controls">
+          <select id="cardCount">
+            <option value="8">8 cards</option>
+            <option value="12" selected>12 cards</option>
+            <option value="20">20 cards</option>
+            <option value="30">30 cards</option>
+          </select>
+          <select id="cardFocus">
+            <option value="mixed">Mixed focus</option>
+            <option value="definitions">Definitions</option>
+            <option value="concepts">Concepts</option>
+            <option value="dates">Dates & facts</option>
+          </select>
+          <button class="btn" id="genCards">Generate Flashcards</button>
+        </div>
+      </div>
+      <div id="cardsError"></div>
+      <div id="cardsOut"><div class="empty-state"><div class="empty-icon">🃏</div>Add material and press Generate Flashcards.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ ===== -->
+  <div class="page" id="page-quiz">
+    <div class="content">
+      <div class="panel-header">
+        <h2>🧠 Quiz</h2>
+        <div class="controls">
+          <select id="quizCount">
+            <option value="5">5 questions</option>
+            <option value="10" selected>10 questions</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
+          </select>
+          <select id="quizDifficulty">
+            <option value="mixed" selected>Mixed difficulty</option>
+            <option value="easy">Easy / recall</option>
+            <option value="hard">Hard / applied</option>
+          </select>
+          <button class="btn" id="genQuiz">Generate Quiz</button>
+        </div>
+      </div>
+      <div id="quizError"></div>
+      <div id="quizOut"><div class="empty-state"><div class="empty-icon">🧠</div>Add material and press Generate Quiz.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== EXPLAIN ===== -->
+  <div class="page" id="page-explain">
+    <div class="content">
+      <div class="panel-header"><h2>💡 Explain a Topic</h2></div>
+      <div class="explain-input-row">
+        <input type="text" id="explainTopic" placeholder="e.g. Le Chatelier's principle, the Krebs cycle, Bayes' theorem...">
+        <select id="explainStyle">
+          <option value="simple">Simple explanation</option>
+          <option value="detailed">Detailed breakdown</option>
+          <option value="eli5">Explain like I'm 5</option>
+          <option value="exam">Exam-style answer</option>
+        </select>
+        <button class="btn" id="genExplain">Explain</button>
+      </div>
+      <div class="checkrow" style="margin-bottom:16px;">
+        <input type="checkbox" id="useContext" checked>
+        <label for="useContext">Ground in my material when relevant</label>
+      </div>
+      <div id="explainError"></div>
+      <div id="explainOut"><div class="empty-state"><div class="empty-icon">💡</div>Ask about any concept you want explained.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== STUDY TOOLS ===== -->
+  <div class="page" id="page-tools">
+    <div class="content wide">
+      <div class="panel-header"><h2>🛠️ Study Tools</h2></div>
+      <div class="tools-grid">
+
+        <!-- Pomodoro -->
+        <div class="tool-widget">
+          <h3>⏱ Pomodoro Timer</h3>
+          <div class="pomodoro-display">
+            <div class="pomodoro-ring">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
+                <circle id="pomRing" cx="60" cy="60" r="52" fill="none" stroke="var(--amber)" stroke-width="8"
+                  stroke-dasharray="326.7" stroke-dashoffset="0" stroke-linecap="round" style="transition:stroke-dashoffset 1s linear;"/>
+              </svg>
+              <div class="time-text" id="pomTime">25:00</div>
+            </div>
+            <div class="pomodoro-label" id="pomLabel">Focus Session</div>
+          </div>
+          <div class="pomodoro-btns">
+            <button class="btn sm" id="pomStart">▶ Start</button>
+            <button class="btn ghost sm" id="pomReset">↺ Reset</button>
+            <button class="btn ghost sm" id="pomMode">☕ Break</button>
+          </div>
+          <div style="text-align:center;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--ink-dim);">Sessions: <span id="pomCount">0</span></div>
+        </div>
+
+        <!-- Vocab Builder -->
+        <div class="tool-widget">
+          <h3>📖 Vocabulary Builder</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn sm" id="genVocab">Generate from material</button>
+            <button class="btn ghost sm" id="clearVocab">Clear</button>
+          </div>
+          <div id="vocabError"></div>
+          <ul class="vocab-list" id="vocabList"><li style="color:var(--ink-dim);font-size:.84rem;padding:8px;">Press "Generate" to extract key vocabulary.</li></ul>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <input type="text" id="vocabTerm" placeholder="Term" style="flex:1;min-width:80px;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-size:.82rem;">
+            <input type="text" id="vocabDef" placeholder="Definition" style="flex:2;min-width:120px;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-size:.82rem;">
+            <button class="btn sm" id="addVocab">Add</button>
+          </div>
+        </div>
+
+        <!-- Formula Sheet -->
+        <div class="tool-widget">
+          <h3>🔢 Formula / Fact Sheet</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn sm" id="genFormulas">Extract from material</button>
+            <button class="btn ghost sm" id="clearFormulas">Clear</button>
+          </div>
+          <div id="formulaError"></div>
+          <div class="formula-list" id="formulaList"><div style="color:var(--ink-dim);font-size:.84rem;padding:8px;">Generate or type key formulas and facts.</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <input type="text" id="formulaInput" placeholder="e.g. F = ma, E = mc²" style="flex:1;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-size:.82rem;font-family:'JetBrains Mono',monospace;">
+            <button class="btn sm" id="addFormula">Add</button>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="tool-widget">
+          <h3>📅 Timeline Builder</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn sm" id="genTimeline">Extract from material</button>
+            <button class="btn ghost sm" id="clearTimeline">Clear</button>
+          </div>
+          <div id="timelineError"></div>
+          <div class="timeline" id="timelineOut"><div style="color:var(--ink-dim);font-size:.84rem;">Generate a timeline from your material.</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <input type="text" id="tlDate" placeholder="Date/Period" style="width:110px;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-size:.82rem;">
+            <input type="text" id="tlEvent" placeholder="Event/description" style="flex:1;min-width:120px;background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-size:.82rem;">
+            <button class="btn sm" id="addTimeline">Add</button>
+          </div>
+        </div>
+
+        <!-- Study Question Generator -->
+        <div class="tool-widget">
+          <h3>❓ Practice Questions</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <select id="pqType" style="background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;">
+              <option value="short">Short answer</option>
+              <option value="essay">Essay prompts</option>
+              <option value="define">Define & explain</option>
+              <option value="compare">Compare & contrast</option>
+            </select>
+            <select id="pqCount" style="background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;">
+              <option value="5">5 questions</option>
+              <option value="8" selected>8 questions</option>
+              <option value="12">12 questions</option>
+            </select>
+            <button class="btn sm" id="genPQ">Generate</button>
+          </div>
+          <div id="pqError"></div>
+          <div id="pqOut" style="max-height:220px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- Summary / Condensed Notes -->
+        <div class="tool-widget">
+          <h3>📋 Quick Summary</h3>
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <select id="summaryLen" style="background:rgba(0,0,0,0.2);border:1px solid var(--rule);color:var(--ink);padding:7px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;">
+              <option value="3">3-point summary</option>
+              <option value="5" selected>5-point summary</option>
+              <option value="10">10-point summary</option>
+            </select>
+            <button class="btn sm" id="genSummary">Summarise</button>
+          </div>
+          <div id="summaryError"></div>
+          <div id="summaryOut" style="font-size:.88rem;line-height:1.6;color:var(--ink-dim);"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAMES ===== -->
+  <div class="page" id="page-games">
+    <div class="content wide">
+      <div class="panel-header"><h2>🎮 Study Arcade</h2></div>
+      <div class="xp-section">
+        <div class="xp-top"><span class="xp-level">Level <strong id="gameLevel">1</strong></span><span class="xp-num" id="gameXpText">0 / 100 XP</span></div>
+        <div class="xp-bar"><div class="xp-fill" id="gameXpFill" style="width:0%"></div></div>
+      </div>
+      <div class="quick-stats" id="arcadeStats"></div>
+      <div class="badge-grid" id="badgeGrid"></div>
+
+      <nav class="game-subnav" id="gameSubnav">
+        <button data-game="arcade" class="active">🎮 Arcade</button>
+        <button data-game="typing">⌨️ Typing</button>
+        <button data-game="emoji">😀 Emoji</button>
+        <button data-game="connect4">🔴 Connect 4</button>
+        <button data-game="chess">♟️ Chess</button>
+      </nav>
+
+      <!-- ARCADE HOME -->
+      <div class="game-panel active" id="game-arcade">
+        <div class="tool-grid">
+          <div class="tool-card" onclick="switchGamePanel('typing')"><span class="tool-icon">⌨️</span><h3>Speed Typing</h3><p>Type key terms from your material as fast and accurately as you can.</p><span class="arrow">→</span></div>
+          <div class="tool-card" onclick="switchGamePanel('emoji')"><span class="tool-icon">😀</span><h3>Emoji Guesser</h3><p>Decode concepts from emoji clues — easy, medium, hard difficulty.</p><span class="arrow">→</span></div>
+          <div class="tool-card" onclick="switchGamePanel('connect4')"><span class="tool-icon">🔴</span><h3>Connect 4</h3><p>Classic Connect 4 vs AI, or Study Mode — answer questions to earn moves.</p><span class="arrow">→</span></div>
+          <div class="tool-card" onclick="switchGamePanel('chess')"><span class="tool-icon">♟️</span><h3>Chess</h3><p>Play chess vs an AI. A great brain-warming break between study sessions.</p><span class="arrow">→</span></div>
+        </div>
+      </div>
+
+      <!-- SPEED TYPING -->
+      <div class="game-panel" id="game-typing">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;">
+          <select id="typingDuration"><option value="30">30 seconds</option><option value="60" selected>60 seconds</option><option value="90">90 seconds</option></select>
+          <button class="btn ghost sm" id="refreshTypingTerms">↻ Refresh terms</button>
+          <button class="btn" id="startTyping">Start Test</button>
+        </div>
+        <div id="typingError"></div>
+        <div id="typingOut"><div class="empty-state"><div class="empty-icon">⌨️</div>Press "Start Test" to begin. Terms come from your material.</div></div>
+      </div>
+
+      <!-- EMOJI GUESSER -->
+      <div class="game-panel" id="game-emoji">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;">
+          <button class="btn ghost sm" id="refreshEmojiSet">↻ Generate emoji set</button>
+          <button class="btn" id="startEmoji">Start Round</button>
+        </div>
+        <div id="emojiError"></div>
+        <div id="emojiOut"><div class="empty-state"><div class="empty-icon">😀</div>Generate an emoji set from your material, then start a round.</div></div>
+      </div>
+
+      <!-- CONNECT 4 -->
+      <div class="game-panel" id="game-connect4">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;">
+          <select id="c4Mode"><option value="pvp">Player vs Player</option><option value="ai">Player vs AI</option><option value="study">Study Mode (answer to play)</option></select>
+          <select id="c4Difficulty"><option value="Easy">AI: Easy</option><option value="Medium" selected>AI: Medium</option><option value="Hard">AI: Hard</option></select>
+          <button class="btn" id="startC4">New Game</button>
+        </div>
+        <div id="c4Error"></div>
+        <div id="c4Out"><div class="empty-state"><div class="empty-icon">🔴</div>Choose a mode and start a new game.</div></div>
+      </div>
+
+      <!-- CHESS -->
+      <div class="game-panel" id="game-chess">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;">
+          <select id="chessDiff"><option value="random">Beginner (random)</option><option value="easy" selected>Easy</option><option value="medium">Medium</option></select>
+          <select id="chessColor"><option value="white">Play as White</option><option value="black">Play as Black</option></select>
+          <button class="btn" id="startChess">New Chess Game</button>
+        </div>
+        <div id="chessOut"><div class="empty-state"><div class="empty-icon">♟️</div>Press "New Chess Game" to start.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end main -->
+</div><!-- end app-shell -->
+
+<script>
+// ===================== LIBRARIES / SETUP =====================
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const LS_KEY='studyDeskPro_v2';
+function el(id){return document.getElementById(id);}
+function escHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function shuffle(a){const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+// ===================== STATE =====================
+let state={
+  apiKey:'',model:'gemini-2.5-flash',remember:false,
+  materialText:'',sources:[],
+  notesHtml:'',cards:null,cardIndex:0,cardFlipped:false,cardStats:{got:0,again:0},
+  quiz:null,quizSubmitted:false,
+  explainHistory:[],
+  vocab:[],formulas:[],timeline:[],
+  game:{
+    xp:0,streak:0,lastPlayedDate:null,
+    gamesPlayed:{typing:0,emoji:0,connect4:0,chess:0},
+    badges:[],typingBest:{wpm:0,accuracy:0},
+    typingTerms:null,emojiSet:null,emojiScore:0,emojiRoundIndex:0,
+    connect4Wins:0,chessWins:0,quizPerfectCount:0,pomSessions:0
+  }
+};
+function defGame(){return{xp:0,streak:0,lastPlayedDate:null,gamesPlayed:{typing:0,emoji:0,connect4:0,chess:0},badges:[],typingBest:{wpm:0,accuracy:0},typingTerms:null,emojiSet:null,emojiScore:0,emojiRoundIndex:0,connect4Wins:0,chessWins:0,quizPerfectCount:0,pomSessions:0};}
+function loadState(){try{const r=localStorage.getItem(LS_KEY);if(r){const s=JSON.parse(r);state=Object.assign(state,s);state.game=Object.assign(defGame(),s.game||{});}}catch(e){}}
+function saveState(){try{const s=state.remember?state:{...state,apiKey:''};localStorage.setItem(LS_KEY,JSON.stringify(s));}catch(e){}}
+
+// ===================== NAVIGATION =====================
+function goPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
+  const pg=el('page-'+name);
+  if(pg){pg.classList.add('active');pg.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click',()=>goPage(btn.dataset.page));
+});
+
+// ===================== SETTINGS =====================
+el('settingsBtn').addEventListener('click',()=>el('settingsDrawer').classList.toggle('open'));
+el('apiKey').addEventListener('input',e=>{state.apiKey=e.target.value;saveState();});
+el('modelName').addEventListener('input',e=>{state.model=e.target.value;saveState();});
+el('rememberKey').addEventListener('change',e=>{state.remember=e.target.checked;saveState();});
+
+// ===================== MATERIAL =====================
+el('materialText').addEventListener('input',e=>{state.materialText=e.target.value;updateCharCount();saveState();});
+function combinedMaterial(){
+  const parts=[];
+  if(state.materialText.trim())parts.push(state.materialText.trim());
+  state.sources.forEach(s=>parts.push(`--- Source: ${s.name} ---\n${s.text}`));
+  let c=parts.join('\n\n');
+  if(c.length>60000)c=c.slice(0,60000)+'\n\n[...truncated...]';
+  return c;
+}
+function updateCharCount(){el('charCount').textContent=combinedMaterial().length.toLocaleString()+' characters';}
+function renderSources(){
+  el('sourceList').innerHTML='';
+  state.sources.forEach((s,i)=>{
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="name">📄 ${escHtml(s.name)} (${s.text.length.toLocaleString()} chars)</span>`;
+    const btn=document.createElement('button');btn.textContent='✕';btn.title='Remove';
+    btn.addEventListener('click',()=>{state.sources.splice(i,1);renderSources();updateCharCount();saveState();});
+    li.appendChild(btn);el('sourceList').appendChild(li);
+  });
+}
+el('clearMaterials').addEventListener('click',()=>{state.materialText='';state.sources=[];el('materialText').value='';renderSources();updateCharCount();saveState();});
+const dz=el('dropzone');
+dz.addEventListener('click',()=>el('fileInput').click());
+el('fileInput').addEventListener('change',e=>{handleFiles(e.target.files);e.target.value='';});
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+dz.addEventListener('drop',e=>handleFiles(e.dataTransfer.files));
+async function handleFiles(files){
+  for(const f of files){try{const t=await extractText(f);state.sources.push({name:f.name,text:t.trim()});}catch(e){alert(`Could not read "${f.name}": ${e.message}`);}}
+  renderSources();updateCharCount();saveState();
+}
+function extractText(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='txt')return file.text();
+  if(ext==='pdf')return file.arrayBuffer().then(async buf=>{const pdf=await pdfjsLib.getDocument({data:buf}).promise;let o='';for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();o+=c.items.map(x=>x.str).join(' ')+'\n\n';}return o;});
+  if(ext==='docx')return file.arrayBuffer().then(buf=>mammoth.extractRawText({arrayBuffer:buf}).then(r=>r.value));
+  return Promise.reject(new Error('Use .txt, .pdf or .docx'));
+}
+
+// ===================== GEMINI API =====================
+async function callGemini(prompt,opts={}){
+  if(!state.apiKey.trim())throw new Error('Add your Gemini API key in "Settings" (top right) first.');
+  const model=(state.model||'gemini-2.5-flash').trim();
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const body={contents:[{role:'user',parts:[{text:prompt}]}]};
+  if(opts.json)body.generationConfig={responseMimeType:'application/json'};
+  let res;
+  try{res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':state.apiKey.trim()},body:JSON.stringify(body)});}
+  catch(e){throw new Error('Network failed. Check your connection.');}
+  if(!res.ok){
+    let d='';try{const j=await res.json();d=j.error?.message||'';}catch(e){}
+    if(res.status===400&&/API key/i.test(d))throw new Error('API key rejected. Check it in settings.');
+    if(res.status===403)throw new Error('Forbidden — check your API key has Gemini access.');
+    if(res.status===404)throw new Error(`Model "${model}" not found. Try "gemini-2.5-flash" in settings.`);
+    if(res.status===429)throw new Error('Rate limit exceeded. Wait a moment and try again.');
+    throw new Error(d||`Error ${res.status}.`);
+  }
+  const data=await res.json();
+  const cand=data.candidates&&data.candidates[0];
+  if(!cand)throw new Error('Model returned no content.');
+  const text=(cand.content?.parts||[]).map(p=>p.text||'').join('');
+  if(!text)throw new Error('Model returned empty response.');
+  return text;
+}
+function parseJson(text){let c=text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'');return JSON.parse(c);}
+function showErr(id,msg){el(id).innerHTML=`<div class="error-box">${escHtml(msg)}</div>`;}
+function clearErr(id){el(id).innerHTML='';}
+
+// ===================== NOTES =====================
+el('genNotes').addEventListener('click',async()=>{
+  clearErr('notesError');
+  const mat=combinedMaterial();
+  if(!mat.trim()){showErr('notesError','Add some material first.');return;}
+  const style=el('notesStyle').value;
+  const btn=el('genNotes');btn.disabled=true;
+  el('notesOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Writing notes...</div>';
+  try{
+    const styleGuide={
+      standard:`Produce clear, well-organized Markdown study notes: one-paragraph summary at top, then headings for each topic with bullet points, bold key terms. End with a "Key Terms" glossary.`,
+      cornell:`Use Cornell note format: divide into Notes (main ideas as bullets), Cues (keywords/questions in a sidebar-style sub-heading), and a Summary paragraph at the end.`,
+      bullet:`Produce a clean hierarchical bullet outline — no paragraphs, just structured bullet points grouped by topic.`,
+      mindmap:`List all major concepts and their sub-concepts in a structured indented list, ideal for creating a mind map.`
+    }[style];
+    const prompt=`You are a meticulous study assistant. ${styleGuide}
+Be faithful to the material; do not invent facts not in it.
+
+MATERIAL:
+"""${mat}"""`;
+    const text=await callGemini(prompt);
+    state.notesHtml=marked.parse(text);
+    el('notesOut').innerHTML=`<div class="notes-toolbar">
+      <button class="btn ghost sm" onclick="printNotes()">🖨 Print</button>
+      <button class="btn ghost sm" onclick="copyNotes()">📋 Copy text</button>
+    </div><div class="notes-body anim-fadein">${state.notesHtml}</div>`;
+    saveState();awardXp(10);
+  }catch(e){showErr('notesError',e.message);el('notesOut').innerHTML=state.notesHtml?`<div class="notes-body">${state.notesHtml}</div>`:'<div class="empty-state"><div class="empty-icon">📝</div>No notes yet.</div>';}
+  finally{btn.disabled=false;}
+});
+function printNotes(){const w=window.open('','_blank');w.document.write(`<html><body style="font-family:Georgia;max-width:800px;margin:40px auto;padding:20px;">${state.notesHtml}</body></html>`);w.print();}
+function copyNotes(){const tmp=document.createElement('div');tmp.innerHTML=state.notesHtml;navigator.clipboard.writeText(tmp.innerText);}
+
+// ===================== FLASHCARDS =====================
+el('genCards').addEventListener('click',async()=>{
+  clearErr('cardsError');
+  const mat=combinedMaterial();
+  if(!mat.trim()){showErr('cardsError','Add some material first.');return;}
+  const count=el('cardCount').value;const focus=el('cardFocus').value;
+  const btn=el('genCards');btn.disabled=true;
+  el('cardsOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Building flashcards...</div>';
+  try{
+    const focusGuide={mixed:'a mix of terms, definitions, concepts and facts',definitions:'primarily definitions and key terms',concepts:'conceptual understanding and "why/how"',dates:'important dates, names, and specific facts'}[focus];
+    const prompt=`Based only on this material, create exactly ${count} flashcards covering ${focusGuide}. Keep fronts concise (a question or term). Keep backs concise (1-3 sentences). Vary the question types.
+Return ONLY valid JSON, no markdown fences:
+{"cards":[{"front":"...","back":"...","category":"..."}]}
+
+MATERIAL:
+"""${mat}"""`;
+    const text=await callGemini(prompt,{json:true});
+    const parsed=parseJson(text);
+    if(!parsed.cards||!parsed.cards.length)throw new Error('No flashcards returned — try again.');
+    state.cards=parsed.cards;state.cardIndex=0;state.cardFlipped=false;state.cardStats={got:0,again:0};
+    renderCards();saveState();awardXp(5);
+  }catch(e){
+    showErr('cardsError',e.message+(e instanceof SyntaxError?' (parse error — try again)':''));
+    if(!state.cards)el('cardsOut').innerHTML='<div class="empty-state"><div class="empty-icon">🃏</div>No flashcards yet.</div>';
+  }finally{btn.disabled=false;}
+});
+function renderCards(){
+  if(!state.cards||!state.cards.length){el('cardsOut').innerHTML='<div class="empty-state"><div class="empty-icon">🃏</div>No flashcards yet.</div>';return;}
+  const card=state.cards[state.cardIndex];
+  const pct=Math.round((state.cardIndex/state.cards.length)*100);
+  const cat=card.category?`<span style="position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#9c8c63;text-transform:uppercase;letter-spacing:.05em;">${escHtml(card.category)}</span>`:'';
+  el('cardsOut').innerHTML=`
+    <div class="deck-wrap anim-fadein">
+      <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="card-stage">
+        <div class="card-inner${state.cardFlipped?' flipped':''}" id="cardInner">
+          <div class="card-face front">
+            <span class="tag">QUESTION · click to flip</span>
+            ${escHtml(card.front)}${cat}
+          </div>
+          <div class="card-face back">
+            <span class="tag">ANSWER</span>
+            ${escHtml(card.back)}${cat}
+          </div>
+        </div>
+      </div>
+      <div class="deck-controls">
+        <button class="icon-btn" id="prevCard">‹</button>
+        <span class="count-badge">${state.cardIndex+1} / ${state.cards.length}</span>
+        <button class="icon-btn" id="nextCard">›</button>
+      </div>
+      <div class="rate-row">
+        <button class="rate-btn again" id="rateAgain">↺ Still learning</button>
+        <button class="rate-btn got" id="rateGot">✓ Got it</button>
+      </div>
+      <div class="deck-stats-row">Got it: ${state.cardStats.got} &nbsp;·&nbsp; Still learning: ${state.cardStats.again}</div>
+    </div>`;
+  el('cardInner').addEventListener('click',()=>{state.cardFlipped=!state.cardFlipped;renderCards();});
+  el('prevCard').addEventListener('click',e=>{e.stopPropagation();moveCard(-1);});
+  el('nextCard').addEventListener('click',e=>{e.stopPropagation();moveCard(1);});
+  el('rateGot').addEventListener('click',e=>{e.stopPropagation();state.cardStats.got++;awardXp(4);checkAchievements();moveCard(1);});
+  el('rateAgain').addEventListener('click',e=>{e.stopPropagation();state.cardStats.again++;moveCard(1);});
+}
+function moveCard(dir){state.cardIndex=(state.cardIndex+dir+state.cards.length)%state.cards.length;state.cardFlipped=false;renderCards();saveState();}
+
+// ===================== QUIZ =====================
+el('genQuiz').addEventListener('click',async()=>{
+  clearErr('quizError');
+  const mat=combinedMaterial();
+  if(!mat.trim()){showErr('quizError','Add some material first.');return;}
+  const count=el('quizCount').value;const diff=el('quizDifficulty').value;
+  const btn=el('genQuiz');btn.disabled=true;
+  el('quizOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Writing quiz questions...</div>';
+  try{
+    const dg={easy:'straightforward recall questions',hard:'harder applied/analytical questions that require connecting ideas',mixed:'a mix of recall and applied questions'}[diff];
+    const prompt=`Based only on this material, write exactly ${count} multiple-choice questions (${dg}). Each has exactly 4 options, only one correct. Vary question styles (what/why/how/which). Include a one-sentence explanation for the correct answer.
+Return ONLY valid JSON, no markdown fences:
+{"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}]}
+
+MATERIAL:
+"""${mat}"""`;
+    const text=await callGemini(prompt,{json:true});
+    const parsed=parseJson(text);
+    if(!parsed.questions||!parsed.questions.length)throw new Error('No questions returned — try again.');
+    state.quiz=parsed.questions;state.quizSubmitted=false;
+    renderQuiz();saveState();awardXp(5);
+  }catch(e){
+    showErr('quizError',e.message+(e instanceof SyntaxError?' (parse error — try again)':''));
+    if(!state.quiz)el('quizOut').innerHTML='<div class="empty-state"><div class="empty-icon">🧠</div>No quiz yet.</div>';
+  }finally{btn.disabled=false;}
+});
+function renderQuiz(){
+  if(!state.quiz||!state.quiz.length){el('quizOut').innerHTML='<div class="empty-state"><div class="empty-icon">🧠</div>No quiz yet.</div>';return;}
+  let html='';
+  if(state.quizSubmitted){
+    const correct=state.quiz.filter(q=>q.selectedIndex===q.correctIndex).length;
+    const pct=Math.round((correct/state.quiz.length)*100);
+    html+=`<div class="score-banner"><div class="big">${pct}%</div><div><strong>${correct} / ${state.quiz.length}</strong> correct</div><div><button class="btn sm" id="quizRetry">Try Again</button></div></div>`;
+    if(pct===100){awardXp(50);state.game.quizPerfectCount=(state.game.quizPerfectCount||0)+1;checkAchievements();}
+    else awardXp(Math.round(pct/4));
+  }
+  state.quiz.forEach((q,i)=>{
+    html+=`<div class="quiz-q anim-fadein" style="animation-delay:${i*0.05}s">
+      <div class="qtitle"><span class="qnum">Q${i+1}.</span>${escHtml(q.question)}</div>`;
+    q.options.forEach((o,oi)=>{
+      let cls='opt';
+      if(state.quizSubmitted){
+        if(oi===q.correctIndex)cls+=' correct';
+        else if(oi===q.selectedIndex&&oi!==q.correctIndex)cls+=' incorrect';
+      }
+      html+=`<label class="${cls}" data-qi="${i}" data-oi="${oi}">
+        <input type="radio" name="q${i}" value="${oi}" ${state.quizSubmitted?'disabled':''}${q.selectedIndex===oi?'checked':''}>
+        ${escHtml(o)}</label>`;
+    });
+    if(state.quizSubmitted){html+=`<div class="qexplain show">💡 ${escHtml(q.explanation||'')}</div>`;}
+    html+=`</div>`;
+  });
+  if(!state.quizSubmitted)html+=`<div style="margin-top:16px;"><button class="btn" id="submitQuiz">Submit Answers</button></div>`;
+  el('quizOut').innerHTML=html;
+  document.querySelectorAll('.opt input').forEach(inp=>{
+    inp.addEventListener('change',()=>{state.quiz[parseInt(inp.name.replace('q',''))].selectedIndex=parseInt(inp.value);saveState();});
+  });
+  if(!state.quizSubmitted){el('submitQuiz').addEventListener('click',()=>{state.quizSubmitted=true;saveState();renderQuiz();});}
+  else{el('quizRetry')&&el('quizRetry').addEventListener('click',()=>{state.quiz.forEach(q=>delete q.selectedIndex);state.quizSubmitted=false;saveState();renderQuiz();});}
+}
+
+// ===================== EXPLAIN =====================
+el('genExplain').addEventListener('click',doExplain);
+el('explainTopic').addEventListener('keydown',e=>{if(e.key==='Enter')doExplain();});
+async function doExplain(){
+  clearErr('explainError');
+  const topic=el('explainTopic').value.trim();
+  if(!topic){showErr('explainError','Type a topic to explain.');return;}
+  const style=el('explainStyle').value;
+  const useCtx=el('useContext').checked;
+  const mat=combinedMaterial();
+  const btn=el('genExplain');btn.disabled=true;
+  const lid='load-'+Date.now();
+  if(el('explainOut').querySelector('.empty-state'))el('explainOut').innerHTML='';
+  el('explainOut').insertAdjacentHTML('afterbegin',`<div class="loading-row" id="${lid}"><span class="spinner"></span>Explaining "${escHtml(topic)}"...</div>`);
+  try{
+    const styleGuide={
+      simple:`Explain clearly for a student. Use simple language first, then a touch more depth, plus one short example.`,
+      detailed:`Give a thorough, detailed Markdown breakdown: definition, context, mechanism/process, key sub-concepts, common misconceptions, and a worked example.`,
+      eli5:`Explain as if to a curious 10-year-old: use everyday analogies, avoid jargon, keep it warm and fun.`,
+      exam:`Write a model exam answer in Markdown — include a definition, key points (with technical vocabulary), a worked example if relevant, and a concise conclusion.`
+    }[style];
+    let prompt;
+    if(useCtx&&mat.trim()){
+      prompt=`${styleGuide}
+Topic: "${topic}"
+If the material below is relevant, ground your explanation in it. If not, use your general knowledge and say so.
+
+MATERIAL:
+"""${mat}"""`;
+    }else{
+      prompt=`${styleGuide}\nTopic: "${topic}"`;
+    }
+    const text=await callGemini(prompt);
+    const html=marked.parse(text);
+    state.explainHistory.unshift({topic,html,style});
+    state.explainHistory=state.explainHistory.slice(0,12);
+    renderExplain();el('explainTopic').value='';saveState();awardXp(5);
+  }catch(e){showErr('explainError',e.message);document.getElementById(lid)?.remove();}
+  finally{btn.disabled=false;}
+}
+function renderExplain(){
+  if(!state.explainHistory.length){el('explainOut').innerHTML='<div class="empty-state"><div class="empty-icon">💡</div>Ask about any concept you want explained.</div>';return;}
+  el('explainOut').innerHTML=state.explainHistory.map(item=>
+    `<div class="explain-card anim-fadein"><h3>${escHtml(item.topic)}</h3><div class="body">${item.html}</div></div>`
+  ).join('');
+}
+
+// ===================== STUDY TOOLS =====================
+
+// --- Pomodoro ---
+let pomState={running:false,seconds:25*60,mode:'focus',count:0,interval:null};
+const POM={focus:25*60,shortBreak:5*60,longBreak:15*60};
+function renderPomTime(){
+  const m=Math.floor(pomState.seconds/60),s=pomState.seconds%60;
+  el('pomTime').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const total=pomState.mode==='focus'?POM.focus:pomState.mode==='shortBreak'?POM.shortBreak:POM.longBreak;
+  const progress=pomState.seconds/total;
+  const circum=326.7;
+  el('pomRing').style.strokeDashoffset=String(circum*(1-progress));
+  el('pomLabel').textContent=pomState.mode==='focus'?`Focus Session`:`Break Time`;
+  el('pomCount').textContent=pomState.count;
+}
+el('pomStart').addEventListener('click',()=>{
+  if(pomState.running){clearInterval(pomState.interval);pomState.running=false;el('pomStart').textContent='▶ Start';}
+  else{
+    pomState.running=true;el('pomStart').textContent='⏸ Pause';
+    pomState.interval=setInterval(()=>{
+      pomState.seconds--;
+      if(pomState.seconds<=0){
+        clearInterval(pomState.interval);pomState.running=false;el('pomStart').textContent='▶ Start';
+        if(pomState.mode==='focus'){pomState.count++;state.game.pomSessions=(state.game.pomSessions||0)+1;awardXp(15);checkAchievements();saveState();}
+        pomState.mode=pomState.mode==='focus'?'shortBreak':'focus';
+        pomState.seconds=pomState.mode==='focus'?POM.focus:POM.shortBreak;
+        try{new Audio('data:audio/wav;base64,UklGRnoAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAAAAAgADAAIAAgADAAIA').play();}catch(e){}
+      }
+      renderPomTime();
+    },1000);
+  }
+});
+el('pomReset').addEventListener('click',()=>{clearInterval(pomState.interval);pomState.running=false;pomState.seconds=pomState.mode==='focus'?POM.focus:POM.shortBreak;el('pomStart').textContent='▶ Start';renderPomTime();});
+el('pomMode').addEventListener('click',()=>{clearInterval(pomState.interval);pomState.running=false;pomState.mode=pomState.mode==='focus'?'shortBreak':'focus';pomState.seconds=pomState.mode==='focus'?POM.focus:POM.shortBreak;el('pomStart').textContent='▶ Start';el('pomMode').textContent=pomState.mode==='focus'?'☕ Break':'📖 Focus';renderPomTime();});
+
+// --- Vocab ---
+function renderVocab(){
+  const list=el('vocabList');
+  if(!state.vocab||!state.vocab.length){list.innerHTML='<li style="color:var(--ink-dim);font-size:.84rem;padding:8px;">No vocabulary yet.</li>';return;}
+  list.innerHTML=state.vocab.map((v,i)=>`<li class="vocab-item"><span class="vocab-term">${escHtml(v.term)}</span><span class="vocab-def">${escHtml(v.def)}</span><button onclick="removeVocab(${i})" style="margin-left:auto;background:none;border:none;color:var(--brick-soft);cursor:pointer;">✕</button></li>`).join('');
+}
+window.removeVocab=i=>{state.vocab.splice(i,1);renderVocab();saveState();};
+el('addVocab').addEventListener('click',()=>{
+  const t=el('vocabTerm').value.trim(),d=el('vocabDef').value.trim();
+  if(!t||!d)return;
+  if(!state.vocab)state.vocab=[];
+  state.vocab.push({term:t,def:d});
+  el('vocabTerm').value='';el('vocabDef').value='';
+  renderVocab();saveState();
+});
+el('clearVocab').addEventListener('click',()=>{state.vocab=[];renderVocab();saveState();});
+el('genVocab').addEventListener('click',async()=>{
+  const mat=combinedMaterial();if(!mat.trim()){showErr('vocabError','Add material first.');return;}
+  const btn=el('genVocab');btn.disabled=true;
+  try{
+    const text=await callGemini(`Extract 12 key vocabulary terms and their definitions from this material. Return ONLY valid JSON: {"vocab":[{"term":"...","def":"..."}]}\n\nMATERIAL:\n"""${mat}"""`,{json:true});
+    const p=parseJson(text);
+    if(!state.vocab)state.vocab=[];
+    p.vocab.forEach(v=>{if(!state.vocab.find(x=>x.term.toLowerCase()===v.term.toLowerCase()))state.vocab.push(v);});
+    renderVocab();saveState();awardXp(5);
+  }catch(e){showErr('vocabError',e.message);}finally{btn.disabled=false;}
+});
+
+// --- Formulas ---
+function renderFormulas(){
+  if(!state.formulas||!state.formulas.length){el('formulaList').innerHTML='<div style="color:var(--ink-dim);font-size:.84rem;padding:8px;">No formulas yet.</div>';return;}
+  el('formulaList').innerHTML=state.formulas.map((f,i)=>`<div class="formula-item">${escHtml(f)}<button onclick="removeFormula(${i})" style="margin-left:auto;float:right;background:none;border:none;color:var(--brick-soft);cursor:pointer;font-size:.8rem;">✕</button></div>`).join('');
+}
+window.removeFormula=i=>{state.formulas.splice(i,1);renderFormulas();saveState();};
+el('addFormula').addEventListener('click',()=>{const v=el('formulaInput').value.trim();if(!v)return;if(!state.formulas)state.formulas=[];state.formulas.push(v);el('formulaInput').value='';renderFormulas();saveState();});
+el('clearFormulas').addEventListener('click',()=>{state.formulas=[];renderFormulas();saveState();});
+el('genFormulas').addEventListener('click',async()=>{
+  const mat=combinedMaterial();if(!mat.trim()){showErr('formulaError','Add material first.');return;}
+  const btn=el('genFormulas');btn.disabled=true;
+  try{
+    const text=await callGemini(`Extract all key formulas, equations, rules, and key facts from this material as short strings. Return ONLY valid JSON: {"items":["...","..."]}\n\nMATERIAL:\n"""${mat}"""`,{json:true});
+    const p=parseJson(text);
+    if(!state.formulas)state.formulas=[];
+    p.items.forEach(f=>{if(!state.formulas.includes(f))state.formulas.push(f);});
+    renderFormulas();saveState();awardXp(5);
+  }catch(e){showErr('formulaError',e.message);}finally{btn.disabled=false;}
+});
+
+// --- Timeline ---
+function renderTimeline(){
+  if(!state.timeline||!state.timeline.length){el('timelineOut').innerHTML='<div style="color:var(--ink-dim);font-size:.84rem;">No timeline events yet.</div>';return;}
+  el('timelineOut').innerHTML=state.timeline.map((t,i)=>`<div class="timeline-item"><div class="timeline-date">${escHtml(t.date)}</div><div class="timeline-text">${escHtml(t.event)}<button onclick="removeTimeline(${i})" style="margin-left:8px;background:none;border:none;color:var(--brick-soft);cursor:pointer;font-size:.75rem;">✕</button></div></div>`).join('');
+}
+window.removeTimeline=i=>{state.timeline.splice(i,1);renderTimeline();saveState();};
+el('addTimeline').addEventListener('click',()=>{const d=el('tlDate').value.trim(),e=el('tlEvent').value.trim();if(!d||!e)return;if(!state.timeline)state.timeline=[];state.timeline.push({date:d,event:e});el('tlDate').value='';el('tlEvent').value='';renderTimeline();saveState();});
+el('clearTimeline').addEventListener('click',()=>{state.timeline=[];renderTimeline();saveState();});
+el('genTimeline').addEventListener('click',async()=>{
+  const mat=combinedMaterial();if(!mat.trim()){showErr('timelineError','Add material first.');return;}
+  const btn=el('genTimeline');btn.disabled=true;
+  try{
+    const text=await callGemini(`Extract key dates, events or chronological steps from this material. Sort chronologically. Return ONLY valid JSON: {"events":[{"date":"...","event":"..."}]}\n\nMATERIAL:\n"""${mat}"""`,{json:true});
+    const p=parseJson(text);
+    if(!state.timeline)state.timeline=[];
+    p.events.forEach(e=>{if(!state.timeline.find(x=>x.date===e.date&&x.event===e.event))state.timeline.push(e);});
+    renderTimeline();saveState();awardXp(5);
+  }catch(e){showErr('timelineError',e.message);}finally{btn.disabled=false;}
+});
+
+// --- Practice Questions ---
+el('genPQ').addEventListener('click',async()=>{
+  const mat=combinedMaterial();if(!mat.trim()){showErr('pqError','Add material first.');return;}
+  const type=el('pqType').value,count=el('pqCount').value;
+  const btn=el('genPQ');btn.disabled=true;
+  el('pqOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Generating questions...</div>';
+  try{
+    const guide={short:'short-answer questions (1-3 sentence answers)',essay:'essay-style prompts requiring extended analysis',define:'define & explain terms questions',compare:'compare & contrast questions'}[type];
+    const text=await callGemini(`Generate ${count} ${guide} based on this material. Number them. Be specific to the material content.\n\nMATERIAL:\n"""${mat}"""`,{});
+    el('pqOut').innerHTML=`<div style="background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:18px 20px;font-size:.9rem;line-height:1.7;">${marked.parse(text)}</div>`;
+    awardXp(5);
+  }catch(e){showErr('pqError',e.message);el('pqOut').innerHTML='';}finally{btn.disabled=false;}
+});
+
+// --- Quick Summary ---
+el('genSummary').addEventListener('click',async()=>{
+  const mat=combinedMaterial();if(!mat.trim()){showErr('summaryError','Add material first.');return;}
+  const n=el('summaryLen').value;
+  const btn=el('genSummary');btn.disabled=true;
+  el('summaryOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Summarising...</div>';
+  try{
+    const text=await callGemini(`Summarise the following material into exactly ${n} clear, concise bullet points. Each point should capture a distinct key idea. Be specific and faithful to the material.\n\nMATERIAL:\n"""${mat}"""`,{});
+    el('summaryOut').innerHTML=`<div class="anim-fadein" style="background:var(--paper);color:#2a2620;border-radius:var(--radius);padding:18px 20px;font-size:.9rem;line-height:1.7;">${marked.parse(text)}</div>`;
+    awardXp(3);
+  }catch(e){showErr('summaryError',e.message);el('summaryOut').innerHTML='';}finally{btn.disabled=false;}
+});
+
+// ===================== GAMIFICATION =====================
+const BADGES=[
+  {id:'first_notes',emoji:'📝',name:'Note Taker',desc:'Generate your first notes',check:s=>!!s.notesHtml},
+  {id:'flashcard_master',emoji:'🃏',name:'Flashcard Master',desc:'Mark 20 cards "Got it"',check:s=>s.cardStats&&s.cardStats.got>=20},
+  {id:'quiz_champion',emoji:'🏆',name:'Quiz Champion',desc:'Score 100% on a quiz',check:s=>(s.game.quizPerfectCount||0)>=1},
+  {id:'typing_expert',emoji:'⌨️',name:'Typing Expert',desc:'Reach 60 WPM',check:s=>s.game.typingBest.wpm>=60},
+  {id:'emoji_decoder',emoji:'😀',name:'Emoji Decoder',desc:'Score 100 points in Emoji Guesser',check:s=>s.game.emojiScore>=100},
+  {id:'connect4_ace',emoji:'🔴',name:'Connect 4 Ace',desc:'Win 3 games of Connect 4',check:s=>s.game.connect4Wins>=3},
+  {id:'chess_player',emoji:'♟️',name:'Chess Player',desc:'Win a chess game',check:s=>s.game.chessWins>=1},
+  {id:'scholar',emoji:'🎓',name:'Scholar',desc:'Reach Level 5',check:s=>levelFromXp(s.game.xp)>=5},
+  {id:'pomodoro_pro',emoji:'⏱',name:'Pomodoro Pro',desc:'Complete 10 focus sessions',check:s=>(s.game.pomSessions||0)>=10},
+  {id:'streak_7',emoji:'🔥',name:'On Fire',desc:'7-day study streak',check:s=>(s.game.streak||0)>=7},
+];
+function levelFromXp(xp){return Math.floor((xp||0)/100)+1;}
+function awardXp(amount){
+  if(!amount)return;
+  state.game.xp=Math.max(0,(state.game.xp||0)+amount);
+  updateStreak();renderAllXp();checkAchievements();
+  showXpToast('+'+amount+' XP');
+}
+function showXpToast(msg){
+  const t=document.createElement('div');t.className='xp-toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),1200);
+}
+function updateStreak(){
+  const today=new Date().toDateString();
+  if(state.game.lastPlayedDate!==today){
+    const yest=new Date(Date.now()-86400000).toDateString();
+    state.game.streak=(state.game.lastPlayedDate===yest)?(state.game.streak||0)+1:1;
+    state.game.lastPlayedDate=today;
+  }
+}
+function checkAchievements(){
+  BADGES.forEach(b=>{
+    if(!state.game.badges.includes(b.id)&&b.check(state)){
+      state.game.badges.push(b.id);
+      showXpToast('🏆 Badge: '+b.name);
+    }
+  });
+  saveState();renderAllXp();
+}
+function renderAllXp(){
+  const xp=state.game.xp||0,level=levelFromXp(xp),xpIn=xp%100;
+  ['gameLevel','homeLevel'].forEach(id=>{if(el(id))el(id).textContent=level;});
+  if(el('topLevel'))el('topLevel').textContent=level;
+  if(el('topStreak'))el('topStreak').textContent=state.game.streak||0;
+  const xpText=`${xpIn} / 100 XP`;
+  ['gameXpText','homeXpText'].forEach(id=>{if(el(id))el(id).textContent=xpText;});
+  const xpW=xpIn+'%';
+  ['gameXpFill','homeXpFill'].forEach(id=>{if(el(id))el(id).style.width=xpW;});
+  if(el('sidebarXpFill'))el('sidebarXpFill').style.width=xpW;
+  if(el('sidebarXpLabel'))el('sidebarXpLabel').textContent='Lv '+level;
+  const gp=state.game.gamesPlayed||{};
+  const statsHtml=`
+    <div class="stat-chip"><span class="val">${(gp.typing||0)+(gp.emoji||0)+(gp.connect4||0)+(gp.chess||0)}</span><span class="lbl">Games played</span></div>
+    <div class="stat-chip"><span class="val">${state.game.streak||0}🔥</span><span class="lbl">Day streak</span></div>
+    <div class="stat-chip"><span class="val">${state.game.typingBest.wpm||0}</span><span class="lbl">Best WPM</span></div>
+    <div class="stat-chip"><span class="val">${state.game.emojiScore||0}</span><span class="lbl">Emoji pts</span></div>
+    <div class="stat-chip"><span class="val">${state.game.connect4Wins||0}</span><span class="lbl">C4 wins</span></div>
+    <div class="stat-chip"><span class="val">${state.game.chessWins||0}</span><span class="lbl">Chess wins</span></div>
+  `;
+  ['arcadeStats','homeStats'].forEach(id=>{if(el(id))el(id).innerHTML=statsHtml;});
+  const badgeHtml=BADGES.map(b=>`<div class="badge ${state.game.badges.includes(b.id)?'unlocked':''}"><span class="b-emoji">${b.emoji}</span><div><div class="b-name">${b.name}</div><div class="b-desc">${b.desc}</div></div></div>`).join('');
+  ['badgeGrid','homeBadges'].forEach(id=>{if(el(id))el(id).innerHTML=badgeHtml;});
+}
+
+// ===================== GAME SUBNAV =====================
+document.querySelectorAll('#gameSubnav button').forEach(btn=>{
+  btn.addEventListener('click',()=>switchGamePanel(btn.dataset.game));
+});
+function switchGamePanel(name){
+  document.querySelectorAll('#gameSubnav button').forEach(b=>b.classList.toggle('active',b.dataset.game===name));
+  document.querySelectorAll('.game-panel').forEach(p=>p.classList.toggle('active',p.id==='game-'+name));
+}
+
+// ===================== SPEED TYPING =====================
+let typingState=null;
+async function getTypingTerms(force){
+  if(state.game.typingTerms&&state.game.typingTerms.length&&!force)return state.game.typingTerms;
+  const mat=combinedMaterial();
+  const fallback=[];
+  if(state.cards)state.cards.forEach(c=>{if(c.front)fallback.push(c.front.replace(/[?.!]+$/,'').trim());});
+  if(state.quiz)state.quiz.forEach(q=>{if(q.options&&typeof q.correctIndex==='number')fallback.push(q.options[q.correctIndex]);});
+  const fb=[...new Set(fallback.filter(t=>t&&t.length>1&&t.length<40))];
+  if(mat.trim()){
+    try{
+      const text=await callGemini(`Extract 30 short key terms from this material for a typing game (2-25 chars each, no punctuation at ends). Return ONLY valid JSON: {"terms":["..."]}\n\nMATERIAL:\n"""${mat}"""`,{json:true});
+      const p=parseJson(text);
+      if(p.terms&&p.terms.length){state.game.typingTerms=[...new Set(p.terms.concat(fb))].slice(0,40);saveState();return state.game.typingTerms;}
+    }catch(e){}
+  }
+  if(fb.length){state.game.typingTerms=fb;saveState();return fb;}
+  return null;
+}
+el('refreshTypingTerms').addEventListener('click',async()=>{
+  clearErr('typingError');const btn=el('refreshTypingTerms');btn.disabled=true;
+  try{const t=await getTypingTerms(true);if(!t)showErr('typingError','Add study material first.');}
+  catch(e){showErr('typingError',e.message);}finally{btn.disabled=false;}
+});
+el('startTyping').addEventListener('click',async()=>{
+  clearErr('typingError');const btn=el('startTyping');btn.disabled=true;
+  try{
+    const terms=await getTypingTerms(false);
+    if(!terms||!terms.length){showErr('typingError','Add study material, or generate flashcards/quiz first.');return;}
+    startTypingRound(terms,parseInt(el('typingDuration').value,10));
+  }catch(e){showErr('typingError',e.message);}finally{btn.disabled=false;}
+});
+function startTypingRound(terms,secs){
+  typingState={queue:shuffle(terms),idx:0,current:'',typed:'',correctChars:0,totalChars:0,words:0,streak:0,best:0,timeLeft:secs,total:secs,timer:null,done:false};
+  nextWord();renderTyping();
+  typingState.timer=setInterval(()=>{typingState.timeLeft--;if(typingState.timeLeft<=0)finishTyping();else renderTyping();},1000);
+}
+function nextWord(){if(typingState.idx>=typingState.queue.length){typingState.queue=shuffle(typingState.queue);typingState.idx=0;}typingState.current=typingState.queue[typingState.idx++];typingState.typed='';}
+function renderTyping(){
+  if(!typingState)return;
+  if(typingState.done){
+    const acc=typingState.totalChars?Math.round((typingState.correctChars/typingState.totalChars)*100):100;
+    const wpm=Math.round((typingState.words/(typingState.total/60))||0);
+    el('typingOut').innerHTML=`<div class="typing-stage typing-result anim-pop">
+      <div class="typing-result"><div class="big">${wpm} WPM</div>
+      <div style="margin:6px 0;color:#5b3e12;">${acc}% accuracy · ${typingState.words} terms · best streak ${typingState.best}</div>
+      <button class="btn" id="typingAgain" style="margin-top:16px;">▶ Play Again</button></div></div>`;
+    el('typingAgain').addEventListener('click',()=>getTypingTerms(false).then(t=>startTypingRound(t,typingState.total)));
+    return;
+  }
+  const word=typingState.current;
+  const typed=typingState.typed||'';
+  let wordHtml='';
+  for(let i=0;i<word.length;i++){
+    if(i<typed.length){wordHtml+=`<span class="${typed[i]===word[i]?'ok':'bad'}">${escHtml(word[i])}</span>`;}
+    else{wordHtml+=`<span>${escHtml(word[i])}</span>`;}
+  }
+  el('typingOut').innerHTML=`<div class="typing-stage">
+    <div class="typing-word">${wordHtml}</div>
+    <input type="text" class="typing-input" id="typingInput" value="${escHtml(typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type here...">
+    <div class="typing-hud">
+      <div><span class="n">${typingState.timeLeft}s</span>left</div>
+      <div><span class="n">${typingState.words}</span>typed</div>
+      <div><span class="n">${typingState.streak}</span>streak</div>
+    </div></div>`;
+  const inp=el('typingInput');inp.focus();inp.selectionStart=inp.selectionEnd=inp.value.length;
+  inp.addEventListener('input',e=>{
+    typingState.typed=e.target.value;
+    if(typingState.typed.toLowerCase()===word.toLowerCase()){
+      typingState.correctChars+=word.length;typingState.totalChars+=word.length;
+      typingState.words++;typingState.streak++;typingState.best=Math.max(typingState.best,typingState.streak);
+      nextWord();
+    }else if(typingState.typed.length>=word.length+2){
+      typingState.totalChars+=word.length;typingState.streak=0;nextWord();
+    }
+    renderTyping();
+  });
+}
+function finishTyping(){
+  clearInterval(typingState.timer);typingState.done=true;
+  const acc=typingState.totalChars?Math.round((typingState.correctChars/typingState.totalChars)*100):100;
+  const wpm=Math.round((typingState.words/(typingState.total/60))||0);
+  state.game.gamesPlayed.typing=(state.game.gamesPlayed.typing||0)+1;
+  if(wpm>(state.game.typingBest.wpm||0)||(wpm===state.game.typingBest.wpm&&acc>(state.game.typingBest.accuracy||0)))state.game.typingBest={wpm,accuracy:acc};
+  awardXp(typingState.words*5+Math.round(acc/5));checkAchievements();saveState();renderTyping();
+}
+
+// ===================== EMOJI GUESSER =====================
+let emojiState=null;
+const DIFF_PTS={easy:5,medium:10,hard:20};
+el('refreshEmojiSet').addEventListener('click',async()=>{
+  clearErr('emojiError');const mat=combinedMaterial();
+  if(!mat.trim()){showErr('emojiError','Add study material first.');return;}
+  const btn=el('refreshEmojiSet');btn.disabled=true;
+  el('emojiOut').innerHTML='<div class="loading-row"><span class="spinner"></span>Creating emoji clues...</div>';
+  try{
+    const text=await callGemini(`Create 15 emoji guesser clues from this material. Each: a key concept/term represented by 2-4 emoji, with a difficulty (easy/medium/hard). Return ONLY valid JSON: {"items":[{"term":"...","emojis":"🌱☀️","difficulty":"easy"}]}\n\nMATERIAL:\n"""${mat}"""`,{json:true});
+    const p=parseJson(text);if(!p.items||!p.items.length)throw new Error('No clues returned.');
+    state.game.emojiSet=p.items;state.game.emojiRoundIndex=0;saveState();
+    el('emojiOut').innerHTML='<div class="empty-state"><div class="empty-icon">✅</div>Emoji set ready! Press "Start Round".</div>';
+  }catch(e){showErr('emojiError',e.message);el('emojiOut').innerHTML='';}finally{btn.disabled=false;}
+});
+el('startEmoji').addEventListener('click',async()=>{
+  clearErr('emojiError');const btn=el('startEmoji');btn.disabled=true;
+  try{
+    let set=state.game.emojiSet;
+    if(!set||!set.length){showErr('emojiError','Generate an emoji set from your material first.');return;}
+    emojiState={items:shuffle(set),idx:0,score:0,revealed:false};renderEmoji();
+  }catch(e){showErr('emojiError',e.message);}finally{btn.disabled=false;}
+});
+function renderEmoji(){
+  if(!emojiState)return;
+  if(emojiState.idx>=emojiState.items.length){
+    state.game.gamesPlayed.emoji=(state.game.gamesPlayed.emoji||0)+1;saveState();
+    el('emojiOut').innerHTML=`<div class="emoji-stage anim-pop"><div class="typing-result">
+      <div class="big">${emojiState.score} pts</div>
+      <div style="color:#5b3e12;">Round complete — total: ${state.game.emojiScore||0} pts</div>
+      <button class="btn" id="emojiAgain" style="margin-top:16px;">▶ Play Again</button></div></div>`;
+    el('emojiAgain').addEventListener('click',()=>el('startEmoji').click());return;
+  }
+  const item=emojiState.items[emojiState.idx];
+  const diff=(item.difficulty||'medium').toLowerCase();
+  el('emojiOut').innerHTML=`<div class="emoji-stage anim-fadein">
+    <div class="emoji-diff-tag ${diff}">${diff} · ${DIFF_PTS[diff]||10} pts</div>
+    <div class="emoji-display">${item.emojis}</div>
+    <input type="text" class="emoji-input" id="emojiInp" placeholder="What concept is this?" ${emojiState.revealed?'disabled':''}>
+    <div id="emojiReveal"></div>
+    <div style="display:flex;justify-content:center;gap:22px;margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#5b3e12;">
+      <div>Round: ${emojiState.score}</div><div>Card ${emojiState.idx+1}/${emojiState.items.length}</div></div></div>`;
+  if(!emojiState.revealed){
+    const inp=el('emojiInp');inp.focus();
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitEmojiGuess(item,inp.value);});
+    setTimeout(()=>el('emojiInp')&&el('emojiInp').insertAdjacentHTML('afterend',`<button class="btn ghost sm" id="emojiSkip" style="display:block;margin:12px auto 0;">Skip →</button>`),50);
+    setTimeout(()=>el('emojiSkip')&&el('emojiSkip').addEventListener('click',()=>submitEmojiGuess(item,'')),60);
+  }
+}
+function submitEmojiGuess(item,guess){
+  const diff=(item.difficulty||'medium').toLowerCase(),pts=DIFF_PTS[diff]||10;
+  const correct=guess.trim().toLowerCase()===item.term.trim().toLowerCase()||
+    (item.term.toLowerCase().includes(guess.trim().toLowerCase())&&guess.trim().length>2);
+  emojiState.revealed=true;
+  if(correct){emojiState.score+=pts;state.game.emojiScore=(state.game.emojiScore||0)+pts;awardXp(pts);}
+  checkAchievements();saveState();
+  el('emojiReveal').innerHTML=`<div class="emoji-reveal ${correct?'correct':'wrong'}">${correct?'✓ Correct!':'✗ '+escHtml(item.term)}</div>
+    <button class="btn sm" id="emojiNext" style="margin-top:14px;">Next →</button>`;
+  el('emojiInp')&&(el('emojiInp').disabled=true);
+  el('emojiNext').addEventListener('click',()=>{emojiState.idx++;emojiState.revealed=false;renderEmoji();});
+}
+
+// ===================== CONNECT 4 =====================
+let c4State=null;
+const C4R=6,C4C=7;
+el('startC4').addEventListener('click',async()=>{
+  clearErr('c4Error');
+  const mode=el('c4Mode').value;
+  if(mode==='study'&&!(state.quiz&&state.quiz.length)){showErr('c4Error','Generate a quiz first in the Quiz tab, then use Study Mode.');return;}
+  c4State={mode,difficulty:el('c4Difficulty').value,board:Array.from({length:C4R},()=>Array(C4C).fill(0)),turn:1,pendingCol:null,winner:null,activeQ:null,qPool:mode==='study'?shuffle(state.quiz):null,qIdx:0};
+  renderC4();
+});
+function c4Drop(board,col){for(let r=C4R-1;r>=0;r--)if(!board[r][col])return r;return -1;}
+function c4Win(board,p){
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  const wins=[];
+  for(let r=0;r<C4R;r++)for(let c=0;c<C4C;c++){
+    if(board[r][c]!==p)continue;
+    for(const[dr,dc]of dirs){
+      let cells=[[r,c]];
+      for(let k=1;k<4;k++){const nr=r+dr*k,nc=c+dc*k;if(nr<0||nr>=C4R||nc<0||nc>=C4C||board[nr][nc]!==p)break;cells.push([nr,nc]);}
+      if(cells.length>=4)wins.push(...cells);
+    }
+  }
+  return wins.length?wins:null;
+}
+function c4Valid(board){const c=[];for(let i=0;i<C4C;i++)if(!board[0][i])c.push(i);return c;}
+function c4EvalWin(w,p){let s=0;const o=p===2?1:2,cnt=v=>w.filter(x=>x===v).length;const pc=cnt(p),ec=cnt(0),oc=cnt(o);if(pc===4)s+=10000;else if(pc===3&&ec===1)s+=100;else if(pc===2&&ec===2)s+=10;if(oc===3&&ec===1)s-=80;return s;}
+function c4Score(board,p){
+  let s=0;const cc=Math.floor(C4C/2);
+  for(let r=0;r<C4R;r++)if(board[r][cc]===p)s+=6;
+  for(let r=0;r<C4R;r++)for(let c=0;c<=C4C-4;c++)s+=c4EvalWin([board[r][c],board[r][c+1],board[r][c+2],board[r][c+3]],p);
+  for(let c=0;c<C4C;c++)for(let r=0;r<=C4R-4;r++)s+=c4EvalWin([board[r][c],board[r+1][c],board[r+2][c],board[r+3][c]],p);
+  for(let r=0;r<=C4R-4;r++)for(let c=0;c<=C4C-4;c++)s+=c4EvalWin([board[r][c],board[r+1][c+1],board[r+2][c+2],board[r+3][c+3]],p);
+  for(let r=3;r<C4R;r++)for(let c=0;c<=C4C-4;c++)s+=c4EvalWin([board[r][c],board[r-1][c+1],board[r-2][c+2],board[r-3][c+3]],p);
+  return s;
+}
+function c4Minimax(board,depth,alpha,beta,max){
+  const valid=c4Valid(board).sort((a,b)=>Math.abs(a-3)-Math.abs(b-3));
+  const terminal=c4Win(board,1)||c4Win(board,2)||!valid.length;
+  if(depth===0||terminal){
+    if(terminal){if(c4Win(board,2))return[null,1e8+depth];if(c4Win(board,1))return[null,-1e8-depth];return[null,0];}
+    return[null,c4Score(board,2)];
+  }
+  let best=max?-Infinity:Infinity,col=valid[0];
+  for(const c of valid){
+    const r=c4Drop(board,c);board[r][c]=max?2:1;
+    const[,sc]=c4Minimax(board,depth-1,alpha,beta,!max);board[r][c]=0;
+    if(max?sc>best:sc<best){best=sc;col=c;}
+    if(max)alpha=Math.max(alpha,best);else beta=Math.min(beta,best);
+    if(alpha>=beta)break;
+  }
+  return[col,best];
+}
+function c4AI(board,diff){
+  const valid=c4Valid(board);if(!valid.length)return null;
+  if(diff==='Easy'){for(const c of valid){const r=c4Drop(board,c);board[r][c]=2;const w=c4Win(board,2);board[r][c]=0;if(w)return c;}return valid[Math.floor(Math.random()*valid.length)];}
+  const depth=diff==='Hard'?5:3;
+  const[col]=c4Minimax(board,depth,-Infinity,Infinity,true);
+  return col!==null&&col!==undefined?col:valid[Math.floor(Math.random()*valid.length)];
+}
+function renderC4(){
+  if(!c4State)return;
+  const s=c4State;
+  const wins=s.winner&&s.winner!=='draw'?c4Win(s.board,s.winner):null;
+  const winCells=wins?new Set(wins.map(([r,c])=>r*C4C+c)):new Set();
+  let boardHtml='<div class="c4-board">';
+  for(let r=0;r<C4R;r++)for(let c=0;c<C4C;c++){
+    const v=s.board[r][c];
+    const isWin=winCells.has(r*C4C+c);
+    boardHtml+=`<div class="c4-cell ${v===1?'p1':v===2?'p2':''} ${isWin?'win':''}" data-col="${c}"></div>`;
+  }
+  boardHtml+='</div>';
+  let qHtml='',statusHtml='';
+  if(s.activeQ){
+    const q=s.activeQ;
+    qHtml=`<div class="c4-question"><div class="qtitle">❓ Player ${s.turn}: ${escHtml(q.question)}</div>`+
+      q.options.map((o,oi)=>`<button class="btn ghost sm c4-opt" data-oi="${oi}" style="margin:4px;">${escHtml(o)}</button>`).join('')+`</div>`;
+  }else if(s.winner){
+    statusHtml=`<div class="c4-status" style="font-size:1rem;color:var(--amber-soft);animation:winnerGlow 1.5s ease infinite;">${s.winner==='draw'?"🤝 It's a draw!":`🎉 ${s.mode==='ai'&&s.winner===2?'AI':'Player '+s.winner} wins!`}</div>`;
+  }else{
+    statusHtml=`<div class="c4-status">Turn: <strong>${s.mode==='ai'&&s.turn===2?'🤖 AI thinking…':'Player '+s.turn}</strong>${s.mode==='study'?' — pick a column to earn a move':''}</div>`;
+  }
+  el('c4Out').innerHTML=qHtml+`<div class="c4-board-wrap">${boardHtml}</div>`+statusHtml;
+  if(!s.winner){
+    if(s.activeQ){
+      document.querySelectorAll('.c4-opt').forEach(b=>b.addEventListener('click',()=>c4Answer(parseInt(b.dataset.oi,10))));
+    }else if(!(s.mode==='ai'&&s.turn===2)){
+      document.querySelectorAll('.c4-cell').forEach(cell=>cell.addEventListener('click',()=>c4Click(parseInt(cell.dataset.col,10))));
+    }
+  }else{
+    el('c4Out').insertAdjacentHTML('beforeend','<div style="text-align:center;margin-top:14px;"><button class="btn sm" id="c4Again">New Game</button></div>');
+    el('c4Again').addEventListener('click',()=>el('startC4').click());
+  }
+}
+function c4Click(col){
+  const s=c4State;
+  if(s.mode==='study'){
+    if(!s.qPool||!s.qPool.length)s.qPool=shuffle(state.quiz);
+    s.activeQ=s.qPool[s.qIdx%s.qPool.length];s.qIdx++;s.pendingCol=col;renderC4();return;
+  }
+  c4Place(col);
+}
+function c4Answer(oi){
+  const s=c4State;const ok=oi===s.activeQ.correctIndex;s.activeQ=null;
+  if(ok){awardXp(15);c4Place(s.pendingCol);}
+  else{awardXp(2);s.turn=s.turn===1?2:1;saveState();renderC4();}
+}
+function c4Place(col){
+  const s=c4State;const r=c4Drop(s.board,col);if(r===-1)return;
+  s.board[r][col]=s.turn;
+  const wins=c4Win(s.board,s.turn);
+  if(wins){
+    s.winner=s.turn;
+    if(s.turn===1||s.mode==='pvp'){state.game.connect4Wins=(state.game.connect4Wins||0)+1;awardXp(50);}
+    state.game.gamesPlayed.connect4=(state.game.gamesPlayed.connect4||0)+1;
+    checkAchievements();saveState();renderC4();return;
+  }
+  if(!c4Valid(s.board).length){s.winner='draw';state.game.gamesPlayed.connect4=(state.game.gamesPlayed.connect4||0)+1;saveState();renderC4();return;}
+  s.turn=s.turn===1?2:1;renderC4();
+  if(s.mode==='ai'&&s.turn===2&&!s.winner){
+    setTimeout(()=>{const c=c4AI(s.board,s.difficulty||'Medium');if(c!==null&&c!==undefined)c4Place(c);},520);
+  }
+}
+
+// ===================== CHESS =====================
+const CHESS_PIECES={
+  wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+  bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+};
+let chessState=null;
+function initChess(){
+  const b=Array(8).fill(null).map(()=>Array(8).fill(null));
+  const backRow=['R','N','B','Q','K','B','N','R'];
+  backRow.forEach((p,c)=>{b[0][c]='b'+p;b[7][c]='w'+p;});
+  for(let c=0;c<8;c++){b[1][c]='bP';b[6][c]='wP';}
+  return{
+    board:b,turn:'w',selected:null,lastMove:null,
+    castling:{wK:true,wQ:true,bK:true,bQ:true},
+    enPassant:null,moveHistory:[],captures:{w:[],b:[]},
+    status:'playing',check:false,
+    playerColor:el('chessColor').value[0]||'w',
+    difficulty:el('chessDiff').value
+  };
+}
+el('startChess').addEventListener('click',()=>{
+  chessState=initChess();renderChess();
+  if(chessState.playerColor!=='w'){
+    setTimeout(()=>chessAiMove(),400);
+  }
+});
+function renderChess(){
+  const s=chessState;if(!s)return;
+  const kingPos=findKing(s.board,s.turn);
+  const inCheck=kingPos&&isInCheck(s.board,s.turn,kingPos);
+  let boardHtml='<div class="chess-board">';
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const isLight=(r+c)%2===0;
+      const piece=s.board[r][c];
+      const isSelected=s.selected&&s.selected[0]===r&&s.selected[1]===c;
+      const isPossible=s.possibleMoves&&s.possibleMoves.some(([mr,mc])=>mr===r&&mc===c);
+      const isLastMove=s.lastMove&&((s.lastMove.fr===r&&s.lastMove.fc===c)||(s.lastMove.tr===r&&s.lastMove.tc===c));
+      const isCheck=inCheck&&piece&&piece===s.turn+'K';
+      const hasPiece=!!piece;
+      let cls=`chess-sq ${isLight?'light':'dark'}`;
+      if(isSelected)cls+=' selected';
+      if(isPossible)cls+=` possible${hasPiece?' has-piece':''}`;
+      if(isLastMove&&!isSelected)cls+=' last-move';
+      if(isCheck)cls+=' check';
+      // Add file/rank coords
+      let coords='';
+      if(c===0)coords+=`<span class="chess-coords rank">${8-r}</span>`;
+      if(r===7)coords+=`<span class="chess-coords file">${String.fromCharCode(97+c)}</span>`;
+      boardHtml+=`<div class="${cls}" data-r="${r}" data-c="${c}">${piece?`<span class="piece">${CHESS_PIECES[piece]||''}</span>`:''}${coords}</div>`;
+    }
+  }
+  boardHtml+='</div>';
+  // Sidebar
+  const wCapt=s.captures.w.map(p=>CHESS_PIECES[p]||'').join('');
+  const bCapt=s.captures.b.map(p=>CHESS_PIECES[p]||'').join('');
+  let statusMsg='';
+  if(s.status==='checkmate')statusMsg=`<strong style="color:var(--amber-soft);">♔ Checkmate! ${s.turn==='w'?'Black':'White'} wins!</strong>`;
+  else if(s.status==='stalemate')statusMsg=`<strong>Stalemate — draw!</strong>`;
+  else if(inCheck)statusMsg=`<span style="color:var(--brick-soft);">⚠ ${s.turn==='w'?'White':'Black'} is in check!</span>`;
+  else statusMsg=`${s.turn==='w'?'⬜ White':'⬛ Black'} to move`;
+  const movePairs=[];
+  for(let i=0;i<s.moveHistory.length;i+=2)movePairs.push([i/2+1,s.moveHistory[i]||'',s.moveHistory[i+1]||'']);
+  const moveListHtml=movePairs.map(([n,m1,m2])=>`<div class="move-pair"><span class="move-num">${n}.</span><span class="move-notation">${m1}</span>${m2?`<span class="move-notation">${m2}</span>`:''}</div>`).join('');
+  el('chessOut').innerHTML=`<div class="chess-wrap anim-fadein">
+    <div class="chess-board-container">${boardHtml}</div>
+    <div class="chess-sidebar">
+      <div class="chess-status">
+        <div class="who">${statusMsg}</div>
+        <div class="info">Difficulty: ${s.difficulty}</div>
+      </div>
+      <div class="captured-display">
+        <h4>Captured</h4>
+        <div class="captured-pieces">${bCapt||'—'}</div>
+        <div style="font-size:.68rem;color:var(--ink-dim);margin:3px 0;">Black captured by White</div>
+        <div class="captured-pieces">${wCapt||'—'}</div>
+        <div style="font-size:.68rem;color:var(--ink-dim);margin:3px 0;">White captured by Black</div>
+      </div>
+      <div class="move-history"><h4>Moves</h4><div id="chessMovesInner">${moveListHtml||'<span style="color:var(--ink-dim);font-size:.78rem;">No moves yet</span>'}</div></div>
+      <div class="chess-controls">
+        <button class="btn ghost sm" id="chessUndo">↺ Undo</button>
+        <button class="btn sm" id="chessNew">New Game</button>
+      </div>
+    </div>
+  </div>`;
+  // Scroll moves to bottom
+  const mi=document.getElementById('chessMovesInner');if(mi)mi.scrollTop=mi.scrollHeight;
+  // Attach events
+  document.querySelectorAll('.chess-sq').forEach(sq=>{
+    sq.addEventListener('click',()=>{
+      const r=parseInt(sq.dataset.r),c=parseInt(sq.dataset.c);
+      handleChessClick(r,c);
+    });
+  });
+  el('chessNew')&&el('chessNew').addEventListener('click',()=>{chessState=initChess();renderChess();if(chessState.playerColor!=='w')setTimeout(()=>chessAiMove(),400);});
+  el('chessUndo')&&el('chessUndo').addEventListener('click',chessUndo);
+}
+function handleChessClick(r,c){
+  const s=chessState;if(!s||s.status!=='playing')return;
+  if(s.turn!==s.playerColor)return; // AI's turn
+  const piece=s.board[r][c];
+  if(s.selected){
+    const[sr,sc]=s.selected;
+    if(sr===r&&sc===c){s.selected=null;s.possibleMoves=null;renderChess();return;}
+    // Try to move
+    if(s.possibleMoves&&s.possibleMoves.some(([mr,mc])=>mr===r&&mc===c)){
+      doChessMove(sr,sc,r,c);return;
+    }
+  }
+  if(piece&&piece[0]===s.turn){
+    s.selected=[r,c];s.possibleMoves=getLegalMoves(s.board,r,c,s);
+    renderChess();
+  }else{s.selected=null;s.possibleMoves=null;renderChess();}
+}
+function doChessMove(fr,fc,tr,tc,isAi){
+  const s=chessState;
+  const piece=s.board[fr][fc];if(!piece)return;
+  const capture=s.board[tr][tc];
+  // Record move (simplified algebraic)
+  const files='abcdefgh';
+  let notation=`${files[fc]}${8-fr}→${files[tc]}${8-tr}`;
+  if(capture)notation+='x';
+  // Castling detection
+  let castled=false;
+  if(piece==='wK'&&fr===7&&fc===4){
+    if(tr===7&&tc===6&&s.castling.wK&&!s.board[7][5]&&!s.board[7][6]){s.board[7][7]=null;s.board[7][5]='wR';notation='O-O';castled=true;}
+    else if(tr===7&&tc===2&&s.castling.wQ&&!s.board[7][3]&&!s.board[7][2]&&!s.board[7][1]){s.board[7][0]=null;s.board[7][3]='wR';notation='O-O-O';castled=true;}
+  }
+  if(piece==='bK'&&fr===0&&fc===4){
+    if(tr===0&&tc===6&&s.castling.bK&&!s.board[0][5]&&!s.board[0][6]){s.board[0][7]=null;s.board[0][5]='bR';notation='O-O';castled=true;}
+    else if(tr===0&&tc===2&&s.castling.bQ&&!s.board[0][3]&&!s.board[0][2]&&!s.board[0][1]){s.board[0][0]=null;s.board[0][3]='bR';notation='O-O-O';castled=true;}
+  }
+  // En passant
+  if((piece==='wP'||piece==='bP')&&tc!==fc&&!capture&&s.enPassant&&s.enPassant[0]===tr&&s.enPassant[1]===tc){
+    s.board[fr][tc]=null;s.captures[piece[0]].push(piece[0]==='w'?'bP':'wP');
+  }
+  if(capture)s.captures[piece[0]].push(capture);
+  s.board[tr][tc]=piece;s.board[fr][fc]=null;
+  // En passant flag
+  s.enPassant=null;
+  if((piece==='wP'&&fr===6&&tr===4)||(piece==='bP'&&fr===1&&tr===3)){s.enPassant=[piece==='wP'?5:2,tc];}
+  // Pawn promotion (auto-queen)
+  if(piece==='wP'&&tr===0){s.board[tr][tc]='wQ';notation+='=Q';}
+  if(piece==='bP'&&tr===7){s.board[tr][tc]='bQ';notation+='=Q';}
+  // Update castling rights
+  if(piece==='wK')s.castling.wK=s.castling.wQ=false;
+  if(piece==='bK')s.castling.bK=s.castling.bQ=false;
+  if(piece==='wR'&&fr===7){if(fc===7)s.castling.wK=false;if(fc===0)s.castling.wQ=false;}
+  if(piece==='bR'&&fr===0){if(fc===7)s.castling.bK=false;if(fc===0)s.castling.bQ=false;}
+  s.lastMove={fr,fc,tr,tc};s.selected=null;s.possibleMoves=null;s.moveHistory.push(notation);
+  s.turn=s.turn==='w'?'b':'w';
+  // Check for checkmate/stalemate
+  const opponent=s.turn;
+  const kPos=findKing(s.board,opponent);
+  const inChk=kPos&&isInCheck(s.board,opponent,kPos);
+  const hasMoves=hasAnyLegalMove(s.board,opponent,s);
+  if(!hasMoves){s.status=inChk?'checkmate':'stalemate';if(s.status==='checkmate'){if(!isAi){state.game.chessWins=(state.game.chessWins||0)+1;awardXp(100);}checkAchievements();saveState();}}
+  s.check=inChk;
+  renderChess();
+  // AI move
+  if(s.status==='playing'&&s.turn!==s.playerColor){setTimeout(()=>chessAiMove(),350);}
+}
+function chessUndo(){
+  const s=chessState;if(!s||!s.moveHistory.length)return;
+  // Simple undo: restart and replay all-2 moves
+  const hist=s.moveHistory.slice(0,-2);
+  chessState=initChess();
+  // For simplicity, just remove last user move by reiniting
+  chessState.moveHistory=[];renderChess();
+}
+function findKing(board,color){
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]===color+'K')return[r,c];
+  return null;
+}
+function isInCheck(board,color,kPos){
+  const[kr,kc]=kPos;const opp=color==='w'?'b':'w';
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=board[r][c];if(!p||p[0]!==opp)continue;
+    const moves=getRawMoves(board,r,c,{enPassant:null,castling:{wK:false,wQ:false,bK:false,bQ:false}});
+    if(moves.some(([mr,mc])=>mr===kr&&mc===kc))return true;
+  }
+  return false;
+}
+function getLegalMoves(board,r,c,state){
+  const piece=board[r][c];if(!piece)return[];
+  const raw=getRawMoves(board,r,c,state);
+  return raw.filter(([tr,tc])=>{
+    const copy=board.map(row=>row.slice());
+    copy[tr][tc]=piece;copy[r][c]=null;
+    const kp=findKing(copy,piece[0]);
+    return kp&&!isInCheck(copy,piece[0],kp);
+  });
+}
+function hasAnyLegalMove(board,color,state){
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=board[r][c];if(!p||p[0]!==color)continue;
+    if(getLegalMoves(board,r,c,state).length)return true;
+  }
+  return false;
+}
+function getRawMoves(board,r,c,{enPassant,castling}){
+  const piece=board[r][c];if(!piece)return[];
+  const color=piece[0],type=piece[1];const opp=color==='w'?'b':'w';
+  const moves=[];const inBounds=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+  const empty=(r,c)=>inBounds(r,c)&&!board[r][c];
+  const hasOpp=(r,c)=>inBounds(r,c)&&board[r][c]&&board[r][c][0]===opp;
+  const slide=(dr,dc)=>{let nr=r+dr,nc=c+dc;while(inBounds(nr,nc)){if(board[nr][nc]){if(board[nr][nc][0]===opp)moves.push([nr,nc]);break;}moves.push([nr,nc]);nr+=dr;nc+=dc;}};
+  if(type==='P'){
+    const dir=color==='w'?-1:1;const startRow=color==='w'?6:1;
+    if(empty(r+dir,c)){moves.push([r+dir,c]);if(r===startRow&&empty(r+2*dir,c))moves.push([r+2*dir,c]);}
+    [-1,1].forEach(dc=>{if(hasOpp(r+dir,c+dc))moves.push([r+dir,c+dc]);if(enPassant&&enPassant[0]===r+dir&&enPassant[1]===c+dc)moves.push([r+dir,c+dc]);});
+  }
+  if(type==='N'){[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&board[nr][nc]?.[0]!==color)moves.push([nr,nc]);});}
+  if(type==='B'||type==='Q'){[[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>slide(dr,dc));}
+  if(type==='R'||type==='Q'){[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>slide(dr,dc));}
+  if(type==='K'){[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&board[nr][nc]?.[0]!==color)moves.push([nr,nc]);});
+    // Castling
+    if(color==='w'&&r===7&&c===4){if(castling.wK&&!board[7][5]&&!board[7][6])moves.push([7,6]);if(castling.wQ&&!board[7][3]&&!board[7][2]&&!board[7][1])moves.push([7,2]);}
+    if(color==='b'&&r===0&&c===4){if(castling.bK&&!board[0][5]&&!board[0][6])moves.push([0,6]);if(castling.bQ&&!board[0][3]&&!board[0][2]&&!board[0][1])moves.push([0,2]);}
+  }
+  return moves.filter(([tr,tc])=>inBounds(tr,tc));
+}
+
+// Chess AI
+function chessAiMove(){
+  const s=chessState;if(!s||s.status!=='playing')return;
+  const color=s.turn;const allMoves=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=s.board[r][c];if(!p||p[0]!==color)continue;
+    getLegalMoves(s.board,r,c,s).forEach(([tr,tc])=>allMoves.push([r,c,tr,tc]));
+  }
+  if(!allMoves.length){s.status='stalemate';renderChess();return;}
+  let best=null;
+  if(s.difficulty==='random'){
+    best=allMoves[Math.floor(Math.random()*allMoves.length)];
+  }else{
+    // Simple evaluation: prefer captures and center control
+    const evalBoard=board=>{
+      const vals={P:1,N:3,B:3,R:5,Q:9,K:0};
+      let score=0;
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=board[r][c];if(!p)continue;
+        const v=vals[p[1]]||0;
+        const center=(3.5-Math.abs(r-3.5))*(3.5-Math.abs(c-3.5))*0.05;
+        score+=p[0]==='b'?v+center:-v-center;
+      }
+      return score;
+    };
+    let bestScore=-Infinity;
+    const shuffled=shuffle(allMoves);
+    for(const[fr,fc,tr,tc]of shuffled){
+      const copy=s.board.map(row=>row.slice());
+      copy[tr][tc]=copy[fr][fc];copy[fr][fc]=null;
+      let sc=evalBoard(copy);
+      if(s.difficulty==='medium'){
+        // Look 1 ply deeper
+        for(let r2=0;r2<8;r2++)for(let c2=0;c2<8;c2++){
+          const p2=copy[r2][c2];if(!p2||p2[0]!=='w')continue;
+          getLegalMoves(copy,r2,c2,{enPassant:null,castling:{wK:false,wQ:false,bK:false,bQ:false}}).forEach(([tr2,tc2])=>{
+            const copy2=copy.map(row=>row.slice());copy2[tr2][tc2]=copy2[r2][c2];copy2[r2][c2]=null;
+            sc-=evalBoard(copy2)*0.4;
+          });
+        }
+      }
+      if(sc>bestScore){bestScore=sc;best=[fr,fc,tr,tc];}
+    }
+  }
+  if(best)doChessMove(best[0],best[1],best[2],best[3],true);
+}
+
+// ===================== INIT =====================
+function init(){
+  loadState();
+  el('apiKey').value=state.apiKey||'';
+  el('modelName').value=state.model||'gemini-2.5-flash';
+  el('rememberKey').checked=!!state.remember;
+  el('materialText').value=state.materialText||'';
+  if(!state.vocab)state.vocab=[];
+  if(!state.formulas)state.formulas=[];
+  if(!state.timeline)state.timeline=[];
+  renderSources();updateCharCount();renderAllXp();
+  if(state.notesHtml)el('notesOut').innerHTML=`<div class="notes-toolbar"><button class="btn ghost sm" onclick="printNotes()">🖨 Print</button><button class="btn ghost sm" onclick="copyNotes()">📋 Copy</button></div><div class="notes-body">${state.notesHtml}</div>`;
+  if(state.cards&&state.cards.length)renderCards();
+  if(state.quiz&&state.quiz.length)renderQuiz();
+  if(state.explainHistory&&state.explainHistory.length)renderExplain();
+  renderVocab();renderFormulas();renderTimeline();
+  renderPomTime();
+  // Tooltips on tool cards
+  document.querySelectorAll('.tool-card').forEach(card=>{
+    card.addEventListener('mousemove',e=>{
+      const rect=card.getBoundingClientRect();
+      card.style.setProperty('--mx',((e.clientX-rect.left)/rect.width*100)+'%');
+      card.style.setProperty('--my',((e.clientY-rect.top)/rect.height*100)+'%');
+    });
+  });
+}
+init();
+</script>
+</body>
+</html>
